@@ -372,7 +372,7 @@ def join_document(
 
         logger.info(
             f"Successfully added {request.gmail} as {role} to spreadsheet {request.spreadsheet_id} "
-            f"by user {user_token_data.innohassle_id}"
+            f"by user {user_token_data.innohassle_id} (innopolis: {user_token_data.email})"
         )
 
         return {"message": f"Successfully added {request.gmail} as {role}"}
