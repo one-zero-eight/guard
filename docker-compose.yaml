@@ -1,0 +1,13 @@
+# This is a Docker Compose configuration for local use.
+
+# Run all services:
+# docker compose up --build --detach
+
+services:
+  api:
+    build: . # See Dockerfile for more details
+    ports:
+      - "8013:8000"
+    volumes:
+      - "./settings.yaml:/app/settings.yaml:ro" # Read-only settings file
+      - "./inh-plugin.json:/app/inh-plugin.json:ro"

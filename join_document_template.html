@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join InNoHassle Guard Document</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #6c757d;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+        input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="email"]:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            color: #007bff;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @media (max-width: 640px) {
+            .container {
+                padding: 25px;
+            }
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Join InNoHassle Guard Document</h1>
+        <p class="subtitle">Enter your Gmail address to get access to the Google Spreadsheet</p>
+
+        <form id="joinForm">
+            <div class="form-group">
+                <label for="gmail">Gmail Address:</label>
+                <input type="email" id="gmail" name="gmail" required placeholder="your.email@gmail.com">
+            </div>
+
+            <button type="submit">Join Document</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Adding you to the document...</p>
+        </div>
+
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const spreadsheetId = urlParams.get('spreadsheet_id');
+
+        if (!spreadsheetId) {
+            document.querySelector('.container').innerHTML = `
+                <div style="text-align: center; color: #721c24;">
+                    <h2>❌ Error</h2>
+                    <p>No spreadsheet ID provided in URL</p>
+                </div>
+            `;
+        }
+
+        document.getElementById('joinForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const gmail = document.getElementById('gmail').value;
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+            const submitBtn = document.querySelector('button[type="submit"]');
+
+            loading.style.display = 'block';
+            status.style.display = 'none';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/google/join-document', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('innohassle_token')
+                    },
+                    body: JSON.stringify({
+                        gmail: gmail,
+                        spreadsheet_id: spreadsheetId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    status.className = 'status success';
+                    status.innerHTML = `
+                        <strong>✅ Success!</strong><br>
+                        <strong>${gmail}</strong> has been added to the spreadsheet.
+                        <br><br>
+                        Redirecting to spreadsheet in <span id="countdown">3</span> seconds...
+                    `;
+                    status.style.display = 'block';
+                    document.getElementById('joinForm').reset();
+
+                    let timeLeft = 3;
+                    const countdownElement = document.getElementById('countdown');
+                    const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+
+                    const countdownInterval = setInterval(() => {
+                        timeLeft--;
+                        if (timeLeft > 0) {
+                            countdownElement.textContent = timeLeft;
+                        } else {
+                            clearInterval(countdownInterval);
+                            window.location.href = spreadsheetUrl;
+                        }
+                    }, 1000);
+                } else {
+                    status.className = 'status error';
+                    status.innerHTML = `<strong>❌ Error:</strong><br>${result.detail || 'Failed to join document'}`;
+                    status.style.display = 'block';
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `❌ Error: ${error.message}`;
+                status.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

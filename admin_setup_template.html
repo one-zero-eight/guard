@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InNoHassle Guard - Setup</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .service-account {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .role-options {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .role-options label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .instructions {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        .email-copy {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: monospace;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .email-copy:hover {
+            background: #dee2e6;
+        }
+        .email-copy.copied {
+            background: #d4edda;
+        }
+        .loading {
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .link-copy {
+            background: #e3f2fd;
+            padding: 12px;
+            border-radius: 5px;
+            word-break: break-all;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .link-copy:hover {
+            background: #bbdefb;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>InNoHassle Guard - Google Sheets Integration</h2>
+        <p>Setup access management for your Google Spreadsheet</p>
+
+        <div class="instructions">
+            <strong>📋 Instructions:</strong>
+            <ol style="margin: 10px 0 0 0; padding-left: 20px;">
+                <li>Share your spreadsheet with the <span class="email-copy" id="instructionEmail" onclick="copyEmail(this)" title="Click to copy" style="display: inline-block; padding: 2px 8px; margin: 0 2px;">Loading...</span> as <strong>Editor</strong></li>
+                <li>Copy the Spreadsheet ID from the URL</li>
+                <li>Choose the role for respondents (Writer or Reader)</li>
+                <li>Click the button to setup and get the join link</li>
+            </ol>
+            <p style="margin-top: 15px; padding: 10px; background: #e7f3ff; border-left: 4px solid #2196f3; border-radius: 3px;">
+                <strong>📌 Note:</strong> The sheet should be shared as <strong>"Anyone on the internet with the link can view"</strong> for respondents to not give them access until they are authorized via InNoHassle Guard.
+            </p>
+        </div>
+
+        <div class="service-account">
+            <strong>Service Account Email:</strong><br>
+            <div class="email-copy" id="serviceEmail" onclick="copyEmail(this)" title="Click to copy">
+                Loading...
+            </div>
+        </div>
+
+        <form id="setupForm">
+            <div class="form-group">
+                <label for="spreadsheet_id">Spreadsheet ID:</label>
+                <input type="text" name="spreadsheet_id" id="spreadsheet_id" required placeholder="e.g., 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms">
+            </div>
+
+            <div class="form-group">
+                <label>Respondent Role:</label>
+                <div class="role-options">
+                    <label>
+                        <input type="radio" name="respondent_role" value="writer" checked>
+                        <span>Writer (can edit)</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="respondent_role" value="reader">
+                        <span>Reader (read-only)</span>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit">Setup InNoHassle Guard Sheet</button>
+        </form>
+
+        <div class="loading" id="loading" style="display: none; text-align: center; margin-top: 20px; color: #007bff;">
+            <div style="border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+            <p>Setting up spreadsheet...</p>
+        </div>
+
+        <div class="status" id="status" style="display: none; margin-top: 20px; padding: 20px; border-radius: 8px;"></div>
+    </div>
+    <script>
+        async function loadServiceAccountEmail() {
+            try {
+                const response = await fetch('/google/service-account-email');
+                const data = await response.json();
+                const emailElement = document.getElementById('serviceEmail');
+                emailElement.textContent = data.email;
+                emailElement.dataset.email = data.email;
+
+                const instructionEmailElement = document.getElementById('instructionEmail');
+                instructionEmailElement.textContent = data.email;
+                instructionEmailElement.dataset.email = data.email;
+            } catch (error) {
+                document.getElementById('serviceEmail').textContent = 'Error loading email';
+                document.getElementById('instructionEmail').textContent = 'service account email';
+                console.error('Failed to load service account email:', error);
+            }
+        }
+
+        function copyEmail(element) {
+            const email = element.dataset.email || element.textContent.trim();
+
+            navigator.clipboard.writeText(email).then(() => {
+                element.classList.add('copied');
+                const originalText = element.textContent;
+                element.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    element.textContent = originalText;
+                    element.classList.remove('copied');
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
+        document.getElementById('setupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const spreadsheetId = document.getElementById('spreadsheet_id').value;
+            const respondentRole = document.querySelector('input[name="respondent_role"]:checked').value;
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+            const submitBtn = document.querySelector('button[type="submit"]');
+
+            loading.style.display = 'block';
+            status.style.display = 'none';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/google/setup-spreadsheet', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        spreadsheet_id: spreadsheetId,
+                        respondent_role: respondentRole
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    status.className = 'status success';
+                    status.innerHTML = `
+                        <div style="text-align: center; font-size: 48px; margin-bottom: 20px;">✅</div>
+                        <h3 style="margin-bottom: 15px; color: #155724;">Setup Complete!</h3>
+                        <p><strong>Sheet Created:</strong> ${result.sheet_title}</p>
+                        <p><strong>Spreadsheet ID:</strong> <code>${result.spreadsheet_id}</code></p>
+                        <p><strong>Respondent Role:</strong> <strong>${result.role_display.toUpperCase()}</strong></p>
+                        <hr style="margin: 20px 0; border: none; border-top: 1px solid #c3e6cb;">
+                        <p><strong>📎 Share this link with respondents:</strong></p>
+                        <div class="link-copy" onclick="copyLink(this)" title="Click to copy">${result.join_link}</div>
+                        <p style="margin-top: 15px; font-size: 14px;">Respondents will use this link to add their Gmail address and get access to the spreadsheet.</p>
+                    `;
+                    status.style.display = 'block';
+                    document.getElementById('setupForm').reset();
+                } else {
+                    status.className = 'status error';
+                    status.innerHTML = `<strong>❌ Error:</strong><br>${result.detail || 'Failed to setup spreadsheet'}`;
+                    status.style.display = 'block';
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `<strong>❌ Error:</strong><br>${error.message}`;
+                status.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+
+        function copyLink(element) {
+            const link = element.textContent.trim();
+
+            navigator.clipboard.writeText(link).then(() => {
+                const originalBg = element.style.backgroundColor;
+                element.style.backgroundColor = '#d4edda';
+                const originalText = element.textContent;
+                element.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    element.textContent = originalText;
+                    element.style.backgroundColor = originalBg;
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
+        loadServiceAccountEmail();
+    </script>
+</body>
+</html>

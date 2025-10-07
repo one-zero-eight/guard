@@ -1,0 +1,56 @@
+$schema: https://json-schema.org/draft-07/schema
+$defs:
+  Accounts:
+    additionalProperties: false
+    description: InNoHassle Accounts integration settings
+    properties:
+      api_url:
+        default: https://api.innohassle.ru/accounts/v0/
+        description: URL of the Accounts API
+        title: Api Url
+        type: string
+      api_jwt_token:
+        description: JWT token for accessing the Accounts API as a service
+        format: password
+        title: Api Jwt Token
+        type: string
+        writeOnly: true
+    required:
+    - api_jwt_token
+    title: Accounts
+    type: object
+additionalProperties: false
+description: Settings for the application.
+properties:
+  $schema:
+    default: null
+    title: $Schema
+    type: string
+  app_root_path:
+    default: ''
+    description: Prefix for the API path (e.g. "/api/v0")
+    title: App Root Path
+    type: string
+  cors_allow_origin_regex:
+    default: .*
+    description: 'Allowed origins for CORS: from which domains requests to the API
+      are allowed. Specify as a regex: `https://.*.innohassle.ru`'
+    title: Cors Allow Origin Regex
+    type: string
+  accounts:
+    $ref: '#/$defs/Accounts'
+  innohassle_url:
+    default: https://innohassle.ru
+    description: URL of the InNoHassle to use for links
+    title: Innohassle Url
+    type: string
+  google_service_account_file:
+    default: inh-plugin.json
+    description: Path to the Google service account file with credentials
+    format: file-path
+    title: Google Service Account File
+    type: string
+required:
+- accounts
+title: Settings
+type: object

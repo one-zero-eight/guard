@@ -1,0 +1,49 @@
+[project]
+name = "guard"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "authlib>=1.6.0",
+    "colorlog>=6.9.0",
+    "fastapi>=0.115.12",
+    "fastapi-swagger>=0.2.19",
+    "pydantic[email]>=2.11.5",
+    "pytz>=2025.2",
+    "pyyaml>=6.0.2",
+    "uvicorn>=0.34.2",
+    "httpx>=0.28.1",
+    "gunicorn>=23.0.0",
+    "python-multipart>=0.0.20",
+    "google-auth>=2.41.1",
+    "google-auth-oauthlib>=1.2.2",
+    "google-api-python-client>=2.184.0",
+    "fastapi-derive-responses>=0.1.4",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.2",
+    "pre-commit>=4.2.0",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+]
+
+[tool.ruff]
+line-length = 120
+lint.ignore = [
+    # wildcard imports are fine
+    "F403",
+    "F405",
+    "PLR",
+]
+lint.extend-select = ["I", "UP", "PL"]
+lint.extend-ignore = ["PLC0415"]
+target-version = "py312"
+
+[tool.coverage.run]
+omit = [
+    "src/prepare.py",
+    "src/api/__main__.py",
+]
