@@ -355,7 +355,7 @@ def join_document(
     user_token_data, _token = user_data
 
     try:
-        role = spreadsheet_roles.get(request.spreadsheet_id, "reader")
+        role = spreadsheet_roles.get(request.spreadsheet_id, "writer")
 
         logger.info(
             f"User {user_token_data.innohassle_id} (innopolis: {user_token_data.email}) "
