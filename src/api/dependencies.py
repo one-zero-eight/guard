@@ -24,14 +24,12 @@ async def verify_token_dep(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No credentials provided",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     token_data = inh_accounts.decode_token(token)
     if token_data is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return token_data, token
