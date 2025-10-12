@@ -2,7 +2,6 @@ import json
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -81,15 +80,6 @@ def get_service_account_email() -> ServiceAccountEmailResponse:
         return ServiceAccountEmailResponse(email=email)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Service account not configured: {e}")
-
-
-@router.get("/", response_class=HTMLResponse)
-def index():
-    """Admin interface for setting up Google Sheets integration."""
-    template_path = "admin_setup_template.html"
-    with open(template_path) as f:
-        template_content = f.read()
-    return HTMLResponse(template_content)
 
 
 def verify_service_account_access(spreadsheet_id: str) -> bool:
@@ -335,15 +325,6 @@ def setup_spreadsheet(
     except Exception as e:
         logger.error(f"Setup error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/join-document", response_class=HTMLResponse)
-def join_document_page():
-    """Frontend page for respondents to join the spreadsheet."""
-    template_path = "join_document_template.html"
-    with open(template_path) as f:
-        template_content = f.read()
-    return HTMLResponse(template_content)
 
 
 @router.post("/join-document")
