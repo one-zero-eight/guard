@@ -17,6 +17,13 @@ class Accounts(SettingBaseModel):
     "JWT token for accessing the Accounts API as a service"
 
 
+class Mongo(SettingBaseModel):
+    """MongoDB settings"""
+
+    uri: SecretStr
+    "MongoDB database connection URI"
+
+
 class Settings(SettingBaseModel):
     """Settings for the application."""
 
@@ -29,6 +36,8 @@ class Settings(SettingBaseModel):
     "Allowed origins for CORS: from which domains requests to the API are allowed. Specify as a regex: `https://.*.innohassle.ru`"
     accounts: Accounts
     "InNoHassle Accounts integration settings"
+    mongo: Mongo
+    "MongoDB settings"
     innohassle_url: str = "https://innohassle.ru"
     "URL of the InNoHassle to use for links"
     google_service_account_file: FilePath = Path("inh-plugin.json")

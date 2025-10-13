@@ -19,6 +19,20 @@ $defs:
     - api_jwt_token
     title: Accounts
     type: object
+  Mongo:
+    additionalProperties: false
+    description: MongoDB settings
+    properties:
+      uri:
+        description: MongoDB database connection URI
+        format: password
+        title: Uri
+        type: string
+        writeOnly: true
+    required:
+    - uri
+    title: Mongo
+    type: object
 additionalProperties: false
 description: Settings for the application.
 properties:
@@ -39,6 +53,8 @@ properties:
     type: string
   accounts:
     $ref: '#/$defs/Accounts'
+  mongo:
+    $ref: '#/$defs/Mongo'
   innohassle_url:
     default: https://innohassle.ru
     description: URL of the InNoHassle to use for links
@@ -52,5 +68,6 @@ properties:
     type: string
 required:
 - accounts
+- mongo
 title: Settings
 type: object

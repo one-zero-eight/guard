@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from src.api.dependencies import VerifyTokenDep
 from src.config import settings
 from src.logging_ import logger
+from src.modules.google_.repository import google_link_repository
 
 router = APIRouter(prefix="/google", tags=["Google"], route_class=AutoDeriveResponsesAPIRoute)
 
@@ -20,8 +21,6 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
-
-spreadsheet_roles: dict[str, Role] = {}
 
 
 def get_creds():
@@ -45,8 +44,6 @@ def service_email() -> str:
 class JoinDocumentRequest(BaseModel):
     gmail: str
     "Gmail address to add to the spreadsheet"
-    spreadsheet_id: str
-    "Spreadsheet ID to join"
 
 
 class ServiceAccountEmailResponse(BaseModel):
@@ -94,7 +91,7 @@ def verify_service_account_access(spreadsheet_id: str) -> bool:
 
 
 @router.post("/setup-spreadsheet")
-def setup_spreadsheet(
+async def setup_spreadsheet(
     request: SetupSpreadsheetRequest,
     user_data: VerifyTokenDep,
 ) -> SetupSpreadsheetResponse:
@@ -114,7 +111,11 @@ def setup_spreadsheet(
                 "Please add the service account as an editor to the spreadsheet first.",
             )
 
-        spreadsheet_roles[request.spreadsheet_id] = request.respondent_role
+        link = await google_link_repository.setup_spreadsheet(
+            author_id=user_token_data.innohassle_id,
+            user_role=request.respondent_role,
+            spreadsheet_id=request.spreadsheet_id,
+        )
 
         sheets = sheets_service()
         target_title = "Hello from InNoHassle Guard"
@@ -132,7 +133,7 @@ def setup_spreadsheet(
         if reqs:
             sheets.spreadsheets().batchUpdate(spreadsheetId=request.spreadsheet_id, body={"requests": reqs}).execute()
 
-        join_link = f"https://innohassle.ru/guard/google/join-document?spreadsheet_id={request.spreadsheet_id}"
+        join_link = f"https://innohassle.ru/guard/google/join-document/{link.slug}"
 
         description_text = [
             ["📋 InNoHassle Guard Service"],
@@ -327,41 +328,42 @@ def setup_spreadsheet(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/join-document")
-def join_document(
+@router.post("/join-document/{slug}")
+async def join_document(
     request: JoinDocumentRequest,
     user_data: VerifyTokenDep,
+    slug: str,
 ):
     """Add user to the spreadsheet with specified role."""
     user_token_data, _token = user_data
 
     try:
-        role = spreadsheet_roles.get(request.spreadsheet_id, "writer")
+        link = await google_link_repository.get_by_slug(slug)
 
         logger.info(
             f"User {user_token_data.innohassle_id} (innopolis: {user_token_data.email}) "
-            f"adding gmail: {request.gmail} to spreadsheet {request.spreadsheet_id} as {role}"
+            f"adding gmail: {request.gmail} to spreadsheet {link.spreadsheet_id} as {link.user_role}"
         )
 
         drive = drive_service()
 
         drive.permissions().create(
-            fileId=request.spreadsheet_id,
-            body={"type": "user", "role": role, "emailAddress": request.gmail},
+            fileId=link.spreadsheet_id,
+            body={"type": "user", "role": link.user_role, "emailAddress": request.gmail},
             sendNotificationEmail=False,
         ).execute()
 
         logger.info(
-            f"Successfully added {request.gmail} as {role} to spreadsheet {request.spreadsheet_id} "
+            f"Successfully added {request.gmail} as {link.user_role} to spreadsheet {link.spreadsheet_id} "
             f"by user {user_token_data.innohassle_id} (innopolis: {user_token_data.email})"
         )
 
-        return {"message": f"Successfully added {request.gmail} as {role}"}
+        return {"message": f"Successfully added {request.gmail} as {link.user_role}"}
 
     except HttpError as e:
         logger.error(
             f"Google API error: user {user_data[0].innohassle_id} tried to add {request.gmail} "
-            f"to spreadsheet {request.spreadsheet_id}: {e}"
+            f"to spreadsheet {link.spreadsheet_id}: {e}"
         )
         if e.resp.status == 403:
             raise HTTPException(
@@ -374,6 +376,6 @@ def join_document(
     except Exception as e:
         logger.error(
             f"Error: user {user_token_data.innohassle_id} tried to add {request.gmail} "
-            f"to spreadsheet {request.spreadsheet_id}: {e}"
+            f"to spreadsheet {link.spreadsheet_id}: {e}"
         )
         raise HTTPException(status_code=500, detail=str(e))

@@ -11,3 +11,24 @@ services:
     volumes:
       - "./settings.yaml:/app/settings.yaml:ro" # Read-only settings file
       - "./inh-plugin.json:/app/inh-plugin.json:ro"
+    depends_on:
+      - db
+  db:
+    # See more: https://registry.hub.docker.com/_/mongo
+    image: "mongo:8.0"
+    restart: no
+    ports:
+      - "27017:27017"
+    volumes:
+      - "mongodb:/data/db"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/db --quiet
+      timeout: 5s
+      start_period: 30s
+      interval: 1m
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-mongoadmin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-secret}
+
+volumes:
+  mongodb:
