@@ -14,6 +14,7 @@ class GoogleLinkJoin(BaseModel):
     gmail: str
     innomail: str
     joined_at: datetime
+    permission_id: str | None = None
 
 
 type GoogleLinkUserRole = Literal["writer", "reader"]

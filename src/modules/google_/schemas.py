@@ -78,3 +78,13 @@ class JoinDocumentResponse(BaseModel):
     "Message"
     spreadsheet_id: str
     "Spreadsheet ID"
+
+
+class BanUserRequest(BaseModel):
+    user_id: PydanticObjectId
+    "User ID to ban"
+
+
+class BanUserResponse(BaseModel):
+    message: str
+    "Message"

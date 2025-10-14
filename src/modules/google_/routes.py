@@ -1,5 +1,6 @@
 # import datetime
 
+from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException
 from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
 from googleapiclient.errors import HttpError
@@ -9,6 +10,8 @@ from src.logging_ import logger
 from src.modules.google_.greeting import setup_greeting_sheet
 from src.modules.google_.repository import google_link_repository
 from src.modules.google_.schemas import (
+    BanUserRequest,
+    BanUserResponse,
     GoogleLink,
     GoogleLinkJoinInfo,
     JoinDocumentRequest,
@@ -19,6 +22,7 @@ from src.modules.google_.schemas import (
 )
 from src.modules.google_.service import (
     add_user_to_document,
+    drive_service,
     service_email,
     sheets_service,
     verify_service_account_access,
@@ -86,6 +90,31 @@ async def setup_spreadsheet(
         raise HTTPException(status_code=e.resp.status, detail=str(e))
     except Exception as e:
         logger.error(f"Setup error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/documents/{slug}")
+async def delete_document(
+    slug: str,
+    user_data: VerifyTokenDep,
+):
+    """Delete a document link by slug (author only)."""
+    user_token_data, _token = user_data
+    try:
+        link = await google_link_repository.get_by_slug(slug)
+        if not link:
+            raise HTTPException(status_code=404, detail="Document not found")
+        if str(link.author_id) != user_token_data.innohassle_id:
+            raise HTTPException(status_code=403, detail="You are not the author of this document")
+
+        deleted = await google_link_repository.delete_by_slug(slug)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Document not found")
+        return {"message": "Document deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting document: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -206,10 +235,101 @@ async def join_document(
             raise HTTPException(status_code=404, detail="Spreadsheet not found.")
         raise HTTPException(status_code=e.resp.status, detail=str(e))
     except ValueError as e:
-        logger.error(f"Validation error: {e}")
-        raise HTTPException(status_code=404, detail=str(e))
+        error_msg = str(e)
+        logger.error(f"Validation error: {error_msg}")
+        if "banned" in error_msg.lower():
+            raise HTTPException(status_code=403, detail=error_msg)
+        raise HTTPException(status_code=404, detail=error_msg)
     except Exception as e:
         logger.error(
             f"Error: user {user_token_data.innohassle_id} tried to add {request.gmail} to document {slug}: {e}"
         )
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/documents/{slug}/bans")
+async def ban_user(
+    slug: str,
+    request: BanUserRequest,
+    user_data: VerifyTokenDep,
+) -> BanUserResponse:
+    """Ban user from the document by their innopolis email."""
+    user_token_data, _token = user_data
+
+    try:
+        link = await google_link_repository.get_by_slug(slug)
+
+        if not link:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        if str(link.author_id) != user_token_data.innohassle_id:
+            raise HTTPException(status_code=403, detail="You are not the author of this document")
+
+        join_to_ban = None
+        for join in link.joins:
+            if join.user_id == request.user_id:
+                join_to_ban = join
+                break
+
+        if not join_to_ban:
+            raise HTTPException(status_code=404, detail=f"User with user_id {request.user_id} not found in joins")
+
+        logger.info(
+            f"User {user_token_data.innohassle_id} banning {join_to_ban.gmail} "
+            f"(innopolis: {join_to_ban.user_id}) from document {slug}"
+        )
+
+        if join_to_ban.permission_id:
+            try:
+                drive = drive_service()
+                drive.permissions().delete(fileId=link.spreadsheet_id, permissionId=join_to_ban.permission_id).execute()
+                logger.info(f"Removed Google Drive permission for {join_to_ban.gmail}")
+            except Exception as e:
+                logger.error(f"Error removing Google Drive permission for {join_to_ban.gmail}: {e}")
+                pass
+
+        await google_link_repository.add_banned(slug=slug, user_id=join_to_ban.user_id)
+
+        logger.info(f"Successfully banned {join_to_ban.gmail} (innopolis: {join_to_ban.user_id}) from document {slug}")
+
+        return BanUserResponse(
+            message=f"Successfully banned {join_to_ban.user_id}",
+        )
+
+    except HTTPException:
+        raise
+    except HttpError as e:
+        logger.error(f"Google API error while banning user: {e}")
+        raise HTTPException(status_code=e.resp.status, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error banning user: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/documents/{slug}/bans/{user_id}")
+async def unban_user(
+    slug: str,
+    user_id: str,
+    user_data: VerifyTokenDep,
+):
+    """Unban user by user_id (author only)."""
+    user_token_data, _token = user_data
+    try:
+        link = await google_link_repository.get_by_slug(slug)
+        if not link:
+            raise HTTPException(status_code=404, detail="Document not found")
+        if str(link.author_id) != user_token_data.innohassle_id:
+            raise HTTPException(status_code=403, detail="You are not the author of this document")
+
+        try:
+            user_oid = PydanticObjectId(user_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid user_id")
+
+        await google_link_repository.remove_banned(slug=slug, user_id=user_oid)
+        return {"message": f"Successfully unbanned {user_id}"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error unbanning user: {e}")
         raise HTTPException(status_code=500, detail=str(e))

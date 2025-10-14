@@ -33,12 +33,22 @@ class GoogleLinkRepository:
     async def get_by_author_id(self, author_id: str) -> list[GoogleLink]:
         return await GoogleLink.find(GoogleLink.author_id == PydanticObjectId(author_id)).to_list()
 
-    async def add_join(self, slug: str, user_id: UserID, gmail: str, innomail: str):
+    async def add_join(self, slug: str, user_id: UserID, gmail: str, innomail: str, permission_id: str | None = None):
         link = await self.get_by_slug(slug)
         if link:
             if any(join.gmail == gmail for join in link.joins):
                 return link
-            link.joins.append(GoogleLinkJoin(user_id=user_id, gmail=gmail, innomail=innomail, joined_at=datetime.now()))
+            if str(user_id) in map(str, link.banned):
+                raise ValueError(f"User {user_id} is banned from the document")
+            link.joins.append(
+                GoogleLinkJoin(
+                    user_id=user_id,
+                    gmail=gmail,
+                    innomail=innomail,
+                    joined_at=datetime.now(),
+                    permission_id=permission_id,
+                )
+            )
             await link.save()
             return link
         return None
@@ -52,6 +62,10 @@ class GoogleLinkRepository:
     async def add_banned(self, slug: str, user_id: UserID):
         link = await self.get_by_slug(slug)
         if link:
+            link.joins = [j for j in link.joins if j.user_id != user_id]
+            if user_id in link.banned:
+                await link.save()
+                return link
             link.banned.append(user_id)
             await link.save()
             return link
@@ -60,13 +74,19 @@ class GoogleLinkRepository:
     async def remove_banned(self, slug: str, user_id: UserID):
         link = await self.get_by_slug(slug)
         if link:
+            if user_id not in link.banned:
+                return link
             link.banned.remove(user_id)
             await link.save()
             return link
         return None
 
-    async def get_banned(self, slug: str) -> list[UserID]:
-        return await GoogleLink.find_one(GoogleLink.slug == slug).banned
+    async def delete_by_slug(self, slug: str) -> bool:
+        link = await self.get_by_slug(slug)
+        if not link:
+            return False
+        await link.delete()
+        return True
 
 
 google_link_repository = GoogleLinkRepository()

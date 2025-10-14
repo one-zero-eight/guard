@@ -72,17 +72,24 @@ async def add_user_to_document(slug: str, user_id: PydanticObjectId, gmail: str,
         raise ValueError(f"Document with slug {slug} not found")
 
     drive = drive_service()
-    drive.permissions().create(
-        fileId=link.spreadsheet_id,
-        body={"type": "user", "role": link.user_role, "emailAddress": gmail},
-        sendNotificationEmail=False,
-    ).execute()
+    permission = (
+        drive.permissions()
+        .create(
+            fileId=link.spreadsheet_id,
+            body={"type": "user", "role": link.user_role, "emailAddress": gmail},
+            sendNotificationEmail=False,
+        )
+        .execute()
+    )
+
+    permission_id = permission.get("id")
 
     await google_link_repository.add_join(
         slug=slug,
         user_id=user_id,
         gmail=gmail,
         innomail=innomail,
+        permission_id=permission_id,
     )
 
     logger.info(f"Successfully added {gmail} as {link.user_role} to spreadsheet {link.spreadsheet_id}")
