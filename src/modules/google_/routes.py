@@ -238,7 +238,7 @@ async def join_document(
         error_msg = str(e)
         logger.error(f"Validation error: {error_msg}")
         if "banned" in error_msg.lower():
-            raise HTTPException(status_code=403, detail=error_msg)
+            raise HTTPException(status_code=403, detail="Permission denied. You are banned from this document.")
         raise HTTPException(status_code=404, detail=error_msg)
     except Exception as e:
         logger.error(
