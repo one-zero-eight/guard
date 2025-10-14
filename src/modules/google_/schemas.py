@@ -57,10 +57,14 @@ class GoogleLink(BaseModel):
     "Google Spreadsheet ID"
     expire_at: datetime | None = None
     "Expiration date"
-    joins: list[GoogleLinkJoinInfo]
+    joins: list[GoogleLinkJoinInfo] | None = None
     "List of users who joined"
-    banned: list[PydanticObjectId]
-    "List of banned user IDs"
+    joins_count: int
+    "Count of joins"
+    banned: list[PydanticObjectId] | None = None
+    "List of banned users IDs"
+    banned_count: int
+    "Count of banned users IDs"
 
 
 class JoinDocumentResponse(BaseModel):

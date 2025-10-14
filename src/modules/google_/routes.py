@@ -103,6 +103,8 @@ async def get_documents(
                 slug=link.slug,
                 spreadsheet_id=link.spreadsheet_id,
                 expire_at=link.expire_at,
+                joins_count=len(link.joins or []),
+                banned_count=len(link.banned or []),
             )
             for link in links
         ]
@@ -143,6 +145,8 @@ async def get_document(
                 for join in link.joins
             ],
             banned=link.banned,
+            joins_count=len(link.joins or []),
+            banned_count=len(link.banned or []),
         )
     except HTTPException:
         raise
