@@ -9,7 +9,6 @@ from src.api.dependencies import VerifyTokenDep
 from src.logging_ import logger
 from src.modules.google_.exceptions import (
     InvalidGmailException,
-    UserAlreadyJoinedExceptionWithAnotherGmail,
     UserBannedException,
 )
 from src.modules.google_.greeting import setup_greeting_sheet
@@ -254,9 +253,6 @@ async def join_document(
     except UserBannedException as e:
         logger.error(f"User banned: {e}")
         raise HTTPException(status_code=403, detail="Permission denied. You are banned from this document.")
-    except UserAlreadyJoinedExceptionWithAnotherGmail as e:
-        logger.error(f"User already joined: {e}")
-        raise HTTPException(status_code=409, detail="User already joined the document with another gmail")
     except InvalidGmailException as e:
         logger.error(f"Invalid gmail: {e}")
         raise HTTPException(
@@ -288,35 +284,34 @@ async def ban_user(
         if str(link.author_id) != user_token_data.innohassle_id:
             raise HTTPException(status_code=403, detail="You are not the author of this document")
 
-        join_to_ban = None
-        for join in link.joins:
-            if join.user_id == request.user_id:
-                join_to_ban = join
-                break
+        joins_to_ban = [join for join in link.joins if join.user_id == request.user_id]
 
-        if not join_to_ban:
+        if not joins_to_ban:
             raise HTTPException(status_code=404, detail=f"User with user_id {request.user_id} not found in joins")
 
-        logger.info(
-            f"User {user_token_data.innohassle_id} banning {join_to_ban.gmail} "
-            f"(innopolis: {join_to_ban.user_id}) from document {slug}"
-        )
+        for join_to_ban in joins_to_ban:
+            logger.info(
+                f"User {user_token_data.innohassle_id} banning {join_to_ban.gmail} "
+                f"(innopolis: {join_to_ban.user_id}) from document {slug}"
+            )
 
-        if join_to_ban.permission_id:
-            try:
-                drive = drive_service()
-                drive.permissions().delete(fileId=link.spreadsheet_id, permissionId=join_to_ban.permission_id).execute()
-                logger.info(f"Removed Google Drive permission for {join_to_ban.gmail}")
-            except Exception as e:
-                logger.error(f"Error removing Google Drive permission for {join_to_ban.gmail}: {e}")
-                pass
+            if join_to_ban.permission_id:
+                try:
+                    drive = drive_service()
+                    drive.permissions().delete(
+                        fileId=link.spreadsheet_id, permissionId=join_to_ban.permission_id
+                    ).execute()
+                    logger.info(f"Removed Google Drive permission for {join_to_ban.gmail}")
+                except Exception as e:
+                    logger.error(f"Error removing Google Drive permission for {join_to_ban.gmail}: {e}")
+                    pass
 
-        await google_link_repository.add_banned(
-            slug=slug,
-            user_id=join_to_ban.user_id,
-            gmail=join_to_ban.gmail,
-            innomail=join_to_ban.innomail,
-        )
+            await google_link_repository.add_banned(
+                slug=slug,
+                user_id=join_to_ban.user_id,
+                gmail=join_to_ban.gmail,
+                innomail=join_to_ban.innomail,
+            )
 
         logger.info(f"Successfully banned {join_to_ban.gmail} (innopolis: {join_to_ban.user_id}) from document {slug}")
 
