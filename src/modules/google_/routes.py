@@ -12,6 +12,7 @@ from src.modules.google_.schemas import (
     GoogleLink,
     GoogleLinkJoinInfo,
     JoinDocumentRequest,
+    JoinDocumentResponse,
     ServiceAccountEmailResponse,
     SetupSpreadsheetRequest,
     SetupSpreadsheetResponse,
@@ -155,7 +156,7 @@ async def join_document(
     request: JoinDocumentRequest,
     user_data: VerifyTokenDep,
     slug: str,
-):
+) -> JoinDocumentResponse:
     """Add user to the spreadsheet with specified role."""
     user_token_data, _token = user_data
 
@@ -177,7 +178,10 @@ async def join_document(
             f"by user {user_token_data.innohassle_id} (innopolis: {user_token_data.email})"
         )
 
-        return {"message": f"Successfully added {request.gmail} as {link.user_role}"}
+        return JoinDocumentResponse(
+            message=f"Successfully added {request.gmail} as {link.user_role}",
+            spreadsheet_id=link.spreadsheet_id,
+        )
 
     except HttpError as e:
         logger.error(

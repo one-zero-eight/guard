@@ -61,3 +61,10 @@ class GoogleLink(BaseModel):
     "List of users who joined"
     banned: list[PydanticObjectId]
     "List of banned user IDs"
+
+
+class JoinDocumentResponse(BaseModel):
+    message: str
+    "Message"
+    spreadsheet_id: str
+    "Spreadsheet ID"
