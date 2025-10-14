@@ -48,6 +48,17 @@ class GoogleLinkJoinInfo(BaseModel):
     "Date and time when user joined"
 
 
+class GoogleLinkBanInfo(BaseModel):
+    user_id: PydanticObjectId
+    "User ID"
+    gmail: str
+    "Gmail address"
+    innomail: str
+    "Innopolis email"
+    banned_at: datetime
+    "Date and time when user was banned"
+
+
 class GoogleLink(BaseModel):
     author_id: PydanticObjectId
     "Author ID"
@@ -65,10 +76,10 @@ class GoogleLink(BaseModel):
     "List of users who joined"
     joins_count: int
     "Count of joins"
-    banned: list[PydanticObjectId] | None = None
-    "List of banned users IDs"
+    banned: list[GoogleLinkBanInfo] | None = None
+    "List of banned users"
     banned_count: int
-    "Count of banned users IDs"
+    "Count of banned users"
     created_at: datetime
     "Date and time when document was created"
 

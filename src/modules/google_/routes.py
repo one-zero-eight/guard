@@ -14,6 +14,7 @@ from src.modules.google_.schemas import (
     BanUserRequest,
     BanUserResponse,
     GoogleLink,
+    GoogleLinkBanInfo,
     GoogleLinkJoinInfo,
     JoinDocumentRequest,
     JoinDocumentResponse,
@@ -181,7 +182,15 @@ async def get_document(
                 )
                 for join in link.joins
             ],
-            banned=link.banned,
+            banned=[
+                GoogleLinkBanInfo(
+                    user_id=ban.user_id,
+                    gmail=ban.gmail,
+                    innomail=ban.innomail,
+                    banned_at=ban.banned_at,
+                )
+                for ban in link.banned
+            ],
             joins_count=len(link.joins or []),
             banned_count=len(link.banned or []),
             created_at=link.id.generation_time,
@@ -292,7 +301,12 @@ async def ban_user(
                 logger.error(f"Error removing Google Drive permission for {join_to_ban.gmail}: {e}")
                 pass
 
-        await google_link_repository.add_banned(slug=slug, user_id=join_to_ban.user_id)
+        await google_link_repository.add_banned(
+            slug=slug,
+            user_id=join_to_ban.user_id,
+            gmail=join_to_ban.gmail,
+            innomail=join_to_ban.innomail,
+        )
 
         logger.info(f"Successfully banned {join_to_ban.gmail} (innopolis: {join_to_ban.user_id}) from document {slug}")
 

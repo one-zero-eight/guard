@@ -9,6 +9,7 @@ from googleapiclient.errors import HttpError
 
 from src.config import settings
 from src.logging_ import logger
+from src.storages.mongo.models import GoogleLinkBan
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -62,6 +63,22 @@ def decode_photo_link_id(photo_link: str) -> bytes | None:
     except Exception:
         logger.error(f"Error decoding photo link id: {photo_link}")
         return None
+
+
+def is_user_banned(
+    banned: list[GoogleLinkBan],
+    user_id: PydanticObjectId | None = None,
+    innomail: str | None = None,
+    gmail: str | None = None,
+) -> bool:
+    for ban in banned:
+        if user_id and ban.user_id == user_id:
+            return True
+        if innomail and ban.innomail == innomail:
+            return True
+        if gmail and ban.gmail == gmail:
+            return True
+    return False
 
 
 async def add_user_to_document(slug: str, user_id: PydanticObjectId, gmail: str, innomail: str):

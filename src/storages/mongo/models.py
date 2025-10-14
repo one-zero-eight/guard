@@ -17,6 +17,13 @@ class GoogleLinkJoin(BaseModel):
     permission_id: str | None = None
 
 
+class GoogleLinkBan(BaseModel):
+    user_id: UserID
+    gmail: str
+    innomail: str
+    banned_at: datetime
+
+
 type GoogleLinkUserRole = Literal["writer", "reader"]
 
 
@@ -28,7 +35,7 @@ class GoogleLinkSchema(BaseModel):
     title: str | None = None
     expire_at: datetime | None = None
     joins: list[GoogleLinkJoin]
-    banned: list[UserID]
+    banned: list[GoogleLinkBan]
 
 
 class GoogleLink(GoogleLinkSchema, CustomDocument):

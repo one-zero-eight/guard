@@ -5,7 +5,8 @@ from string import ascii_letters, digits
 from beanie import PydanticObjectId
 
 from src.modules.google_.exceptions import UserAlreadyJoinedExceptionWithAnotherGmail, UserBannedException
-from src.storages.mongo.models import GoogleLink, GoogleLinkJoin, GoogleLinkUserRole, UserID
+from src.modules.google_.service import is_user_banned
+from src.storages.mongo.models import GoogleLink, GoogleLinkBan, GoogleLinkJoin, GoogleLinkUserRole, UserID
 
 
 def generate_slug():
@@ -44,7 +45,7 @@ class GoogleLinkRepository:
                 return link
             if any(join.user_id == user_id for join in link.joins):
                 raise UserAlreadyJoinedExceptionWithAnotherGmail(user_id=user_id)
-            if str(user_id) in map(str, link.banned):
+            if is_user_banned(banned=link.banned, user_id=user_id, innomail=innomail, gmail=gmail):
                 raise UserBannedException(user_id=user_id)
             link.joins.append(
                 GoogleLinkJoin(
@@ -65,14 +66,21 @@ class GoogleLinkRepository:
             return [join for join in link.joins if query in join.gmail or query in join.innomail]
         return []
 
-    async def add_banned(self, slug: str, user_id: UserID):
+    async def add_banned(self, slug: str, user_id: UserID, gmail: str, innomail: str):
         link = await self.get_by_slug(slug)
         if link:
             link.joins = [j for j in link.joins if j.user_id != user_id]
-            if user_id in link.banned:
+            if any(ban.user_id == user_id for ban in link.banned):
                 await link.save()
                 return link
-            link.banned.append(user_id)
+            link.banned.append(
+                GoogleLinkBan(
+                    user_id=user_id,
+                    gmail=gmail,
+                    innomail=innomail,
+                    banned_at=datetime.now(),
+                )
+            )
             await link.save()
             return link
         return None
@@ -80,9 +88,9 @@ class GoogleLinkRepository:
     async def remove_banned(self, slug: str, user_id: UserID):
         link = await self.get_by_slug(slug)
         if link:
-            if user_id not in link.banned:
+            if not any(ban.user_id == user_id for ban in link.banned):
                 return link
-            link.banned.remove(user_id)
+            link.banned = [ban for ban in link.banned if ban.user_id != user_id]
             await link.save()
             return link
         return None
