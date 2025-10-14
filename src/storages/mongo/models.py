@@ -24,6 +24,7 @@ class GoogleLinkSchema(BaseModel):
     user_role: GoogleLinkUserRole
     slug: str
     spreadsheet_id: str
+    title: str | None = None
     expire_at: datetime | None = None
     joins: list[GoogleLinkJoin]
     banned: list[UserID]

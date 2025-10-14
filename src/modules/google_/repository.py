@@ -13,13 +13,14 @@ def generate_slug():
 
 class GoogleLinkRepository:
     async def setup_spreadsheet(
-        self, author_id: UserID, user_role: GoogleLinkUserRole, spreadsheet_id: str
+        self, author_id: UserID, user_role: GoogleLinkUserRole, spreadsheet_id: str, title: str | None = None
     ) -> GoogleLink:
         link = GoogleLink(
             author_id=author_id,
             user_role=user_role,
             spreadsheet_id=spreadsheet_id,
             slug=generate_slug(),
+            title=title,
             joins=[],
             banned=[],
         )

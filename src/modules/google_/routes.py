@@ -62,6 +62,7 @@ async def setup_spreadsheet(
             author_id=user_token_data.innohassle_id,
             user_role=request.respondent_role,
             spreadsheet_id=request.spreadsheet_id,
+            title=request.title,
         )
 
         join_link = f"https://innohassle.ru/guard/google/documents/{link.slug}/join"
@@ -102,6 +103,7 @@ async def get_documents(
                 user_role=link.user_role,
                 slug=link.slug,
                 spreadsheet_id=link.spreadsheet_id,
+                title=link.title,
                 expire_at=link.expire_at,
                 joins_count=len(link.joins or []),
                 banned_count=len(link.banned or []),
@@ -134,6 +136,7 @@ async def get_document(
             user_role=link.user_role,
             slug=link.slug,
             spreadsheet_id=link.spreadsheet_id,
+            title=link.title,
             expire_at=link.expire_at,
             joins=[
                 GoogleLinkJoinInfo(

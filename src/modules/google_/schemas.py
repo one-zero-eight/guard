@@ -22,6 +22,8 @@ class SetupSpreadsheetRequest(BaseModel):
     "Spreadsheet ID to setup"
     respondent_role: Role
     "Role for respondents (writer or reader)"
+    title: str | None = None
+    "Optional title for the document"
 
 
 class SetupSpreadsheetResponse(BaseModel):
@@ -55,6 +57,8 @@ class GoogleLink(BaseModel):
     "Unique slug for the link"
     spreadsheet_id: str
     "Google Spreadsheet ID"
+    title: str | None = None
+    "Document title"
     expire_at: datetime | None = None
     "Expiration date"
     joins: list[GoogleLinkJoinInfo] | None = None
