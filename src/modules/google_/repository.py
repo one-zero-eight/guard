@@ -2,6 +2,8 @@ import random
 from datetime import datetime
 from string import ascii_letters, digits
 
+from beanie import PydanticObjectId
+
 from src.storages.mongo.models import GoogleLink, GoogleLinkJoin, GoogleLinkUserRole, UserID
 
 
@@ -27,11 +29,8 @@ class GoogleLinkRepository:
     async def get_by_slug(self, slug: str) -> GoogleLink | None:
         return await GoogleLink.find_one(GoogleLink.slug == slug)
 
-    async def get_by_author_id(self, author_id: UserID) -> list[GoogleLink]:
-        return await GoogleLink.find(GoogleLink.author_id == author_id).to_list()
-
-    async def get_joins(self, slug: str) -> list[GoogleLinkJoin]:
-        return await GoogleLink.find_one(GoogleLink.slug == slug).joins
+    async def get_by_author_id(self, author_id: str) -> list[GoogleLink]:
+        return await GoogleLink.find(GoogleLink.author_id == PydanticObjectId(author_id)).to_list()
 
     async def add_join(self, slug: str, user_id: UserID, gmail: str, innomail: str):
         link = await self.get_by_slug(slug)
