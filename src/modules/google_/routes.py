@@ -151,7 +151,7 @@ async def get_document(
             banned=link.banned,
             joins_count=len(link.joins or []),
             banned_count=len(link.banned or []),
-            created_at=link.author_id.generation_time(),
+            created_at=link.id.generation_time,
         )
     except HTTPException:
         raise
