@@ -69,6 +69,8 @@ class GoogleLink(BaseModel):
     "List of banned users IDs"
     banned_count: int
     "Count of banned users IDs"
+    created_at: datetime
+    "Date and time when document was created"
 
 
 class JoinDocumentResponse(BaseModel):
