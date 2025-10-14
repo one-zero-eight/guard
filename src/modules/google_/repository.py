@@ -5,12 +5,27 @@ from string import ascii_letters, digits
 from beanie import PydanticObjectId
 
 from src.modules.google_.exceptions import UserAlreadyJoinedExceptionWithAnotherGmail, UserBannedException
-from src.modules.google_.service import is_user_banned
 from src.storages.mongo.models import GoogleLink, GoogleLinkBan, GoogleLinkJoin, GoogleLinkUserRole, UserID
 
 
 def generate_slug():
     return "".join(random.choices(ascii_letters + digits, k=10))
+
+
+def is_user_banned(
+    banned: list[GoogleLinkBan],
+    user_id: PydanticObjectId | None = None,
+    innomail: str | None = None,
+    gmail: str | None = None,
+) -> bool:
+    for ban in banned:
+        if user_id and ban.user_id == user_id:
+            return True
+        if innomail and ban.innomail == innomail:
+            return True
+        if gmail and ban.gmail == gmail:
+            return True
+    return False
 
 
 class GoogleLinkRepository:
@@ -59,12 +74,6 @@ class GoogleLinkRepository:
             await link.save()
             return link
         return None
-
-    async def search_joins(self, slug: str, query: str) -> list[GoogleLinkJoin]:
-        link = await self.get_by_slug(slug)
-        if link:
-            return [join for join in link.joins if query in join.gmail or query in join.innomail]
-        return []
 
     async def add_banned(self, slug: str, user_id: UserID, gmail: str, innomail: str):
         link = await self.get_by_slug(slug)

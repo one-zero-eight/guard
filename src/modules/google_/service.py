@@ -1,6 +1,4 @@
-import base64
 import json
-import re
 
 from beanie import PydanticObjectId
 from google.oauth2.service_account import Credentials
@@ -9,7 +7,6 @@ from googleapiclient.errors import HttpError
 
 from src.config import settings
 from src.logging_ import logger
-from src.storages.mongo.models import GoogleLinkBan
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -43,42 +40,6 @@ def verify_service_account_access(spreadsheet_id: str) -> bool:
         return any(p.get("emailAddress") == service_acc_email for p in permissions.get("permissions", []))
     except HttpError:
         return False
-
-
-def decode_photo_link_id(photo_link: str) -> bytes | None:
-    try:
-        match = re.search(r"://[\w\-\.]+/[\w\-]+/([\w\-\_]+)", photo_link or "")
-        if match:
-            photo_id = match.group(1)
-        else:
-            return None
-
-        standard_base64 = photo_id.replace("-", "+").replace("_", "/")
-        padding = len(standard_base64) % 4
-        if padding:
-            standard_base64 += "=" * (4 - padding)
-
-        decoded = base64.b64decode(standard_base64)
-        return decoded[:3]
-    except Exception:
-        logger.error(f"Error decoding photo link id: {photo_link}")
-        return None
-
-
-def is_user_banned(
-    banned: list[GoogleLinkBan],
-    user_id: PydanticObjectId | None = None,
-    innomail: str | None = None,
-    gmail: str | None = None,
-) -> bool:
-    for ban in banned:
-        if user_id and ban.user_id == user_id:
-            return True
-        if innomail and ban.innomail == innomail:
-            return True
-        if gmail and ban.gmail == gmail:
-            return True
-    return False
 
 
 async def add_user_to_document(slug: str, user_id: PydanticObjectId, gmail: str, innomail: str):
