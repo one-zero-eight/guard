@@ -37,7 +37,7 @@ class GoogleLinkRepository:
         link = await self.get_by_slug(slug)
         if link:
             if any(join.gmail == gmail for join in link.joins):
-                raise ValueError(f"User {gmail} already joined the document")
+                return link
             link.joins.append(GoogleLinkJoin(user_id=user_id, gmail=gmail, innomail=innomail, joined_at=datetime.now()))
             await link.save()
             return link
