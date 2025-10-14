@@ -27,6 +27,9 @@ class GoogleLinkRepository:
         await link.save()
         return link
 
+    async def get_by_spreadsheet_id(self, spreadsheet_id: str) -> GoogleLink | None:
+        return await GoogleLink.find_one(GoogleLink.spreadsheet_id == spreadsheet_id)
+
     async def get_by_slug(self, slug: str) -> GoogleLink | None:
         return await GoogleLink.find_one(GoogleLink.slug == slug)
 

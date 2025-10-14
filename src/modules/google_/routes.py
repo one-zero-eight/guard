@@ -50,6 +50,9 @@ async def setup_spreadsheet(
     user_token_data, _token = user_data
 
     try:
+        if await google_link_repository.get_by_spreadsheet_id(request.spreadsheet_id):
+            raise HTTPException(status_code=400, detail="Spreadsheet already setup by another user")
+
         logger.info(
             f"User {user_token_data.innohassle_id} (email: {user_token_data.email}) "
             f"setting up spreadsheet {request.spreadsheet_id} with role {request.respondent_role}"
