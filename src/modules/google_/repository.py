@@ -58,7 +58,7 @@ class GoogleLinkRepository:
         if link:
             if any(join.gmail == gmail for join in link.joins):
                 return link
-            if any(join.user_id == user_id for join in link.joins):
+            if any(str(join.user_id) == str(user_id) for join in link.joins):
                 raise UserAlreadyJoinedExceptionWithAnotherGmail(user_id=user_id)
             if is_user_banned(banned=link.banned, user_id=user_id, innomail=innomail, gmail=gmail):
                 raise UserBannedException(user_id=user_id)

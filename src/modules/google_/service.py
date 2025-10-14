@@ -7,6 +7,8 @@ from googleapiclient.errors import HttpError
 
 from src.config import settings
 from src.logging_ import logger
+from src.modules.google_.exceptions import InvalidGmailException, UserAlreadyJoinedExceptionWithAnotherGmail
+from src.modules.google_.repository import google_link_repository
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -43,14 +45,16 @@ def verify_service_account_access(spreadsheet_id: str) -> bool:
 
 
 async def add_user_to_document(slug: str, user_id: PydanticObjectId, gmail: str, innomail: str):
-    from src.modules.google_.exceptions import InvalidGmailException
-    from src.modules.google_.repository import google_link_repository
-
     link = await google_link_repository.get_by_slug(slug)
     if not link:
         raise ValueError(f"Document with slug {slug} not found")
 
     drive = drive_service()
+
+    for join in link.joins:
+        if str(join.user_id) == str(user_id) and join.gmail != gmail:
+            raise UserAlreadyJoinedExceptionWithAnotherGmail(user_id=user_id)
+
     try:
         permission = (
             drive.permissions()
