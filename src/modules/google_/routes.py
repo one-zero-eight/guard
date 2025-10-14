@@ -7,6 +7,7 @@ from googleapiclient.errors import HttpError
 
 from src.api.dependencies import VerifyTokenDep
 from src.logging_ import logger
+from src.modules.google_.exceptions import UserAlreadyJoinedExceptionWithAnotherGmail, UserBannedException
 from src.modules.google_.greeting import setup_greeting_sheet
 from src.modules.google_.repository import google_link_repository
 from src.modules.google_.schemas import (
@@ -237,12 +238,12 @@ async def join_document(
         if e.resp.status == 404:
             raise HTTPException(status_code=404, detail="Spreadsheet not found.")
         raise HTTPException(status_code=e.resp.status, detail=str(e))
-    except ValueError as e:
-        error_msg = str(e)
-        logger.error(f"Validation error: {error_msg}")
-        if "banned" in error_msg.lower():
-            raise HTTPException(status_code=403, detail="Permission denied. You are banned from this document.")
-        raise HTTPException(status_code=404, detail=error_msg)
+    except UserBannedException as e:
+        logger.error(f"User banned: {e}")
+        raise HTTPException(status_code=403, detail="Permission denied. You are banned from this document.")
+    except UserAlreadyJoinedExceptionWithAnotherGmail as e:
+        logger.error(f"User already joined: {e}")
+        raise HTTPException(status_code=409, detail="User already joined the document with another gmail")
     except Exception as e:
         logger.error(
             f"Error: user {user_token_data.innohassle_id} tried to add {request.gmail} to document {slug}: {e}"

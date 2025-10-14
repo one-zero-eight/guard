@@ -4,6 +4,7 @@ from string import ascii_letters, digits
 
 from beanie import PydanticObjectId
 
+from src.modules.google_.exceptions import UserAlreadyJoinedExceptionWithAnotherGmail, UserBannedException
 from src.storages.mongo.models import GoogleLink, GoogleLinkJoin, GoogleLinkUserRole, UserID
 
 
@@ -41,8 +42,10 @@ class GoogleLinkRepository:
         if link:
             if any(join.gmail == gmail for join in link.joins):
                 return link
+            if any(join.user_id == user_id for join in link.joins):
+                raise UserAlreadyJoinedExceptionWithAnotherGmail(user_id=user_id)
             if str(user_id) in map(str, link.banned):
-                raise ValueError(f"User {user_id} is banned from the document")
+                raise UserBannedException(user_id=user_id)
             link.joins.append(
                 GoogleLinkJoin(
                     user_id=user_id,
