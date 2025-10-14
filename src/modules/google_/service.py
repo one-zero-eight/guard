@@ -82,6 +82,7 @@ def is_user_banned(
 
 
 async def add_user_to_document(slug: str, user_id: PydanticObjectId, gmail: str, innomail: str):
+    from src.modules.google_.exceptions import InvalidGmailException
     from src.modules.google_.repository import google_link_repository
 
     link = await google_link_repository.get_by_slug(slug)
@@ -89,15 +90,20 @@ async def add_user_to_document(slug: str, user_id: PydanticObjectId, gmail: str,
         raise ValueError(f"Document with slug {slug} not found")
 
     drive = drive_service()
-    permission = (
-        drive.permissions()
-        .create(
-            fileId=link.spreadsheet_id,
-            body={"type": "user", "role": link.user_role, "emailAddress": gmail},
-            sendNotificationEmail=False,
+    try:
+        permission = (
+            drive.permissions()
+            .create(
+                fileId=link.spreadsheet_id,
+                body={"type": "user", "role": link.user_role, "emailAddress": gmail},
+                sendNotificationEmail=False,
+            )
+            .execute()
         )
-        .execute()
-    )
+    except HttpError as e:
+        if e.resp.status == 400 and "invalidSharingRequest" in str(e):
+            raise InvalidGmailException(gmail=gmail)
+        raise
 
     permission_id = permission.get("id")
 

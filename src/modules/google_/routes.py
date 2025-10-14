@@ -7,7 +7,11 @@ from googleapiclient.errors import HttpError
 
 from src.api.dependencies import VerifyTokenDep
 from src.logging_ import logger
-from src.modules.google_.exceptions import UserAlreadyJoinedExceptionWithAnotherGmail, UserBannedException
+from src.modules.google_.exceptions import (
+    InvalidGmailException,
+    UserAlreadyJoinedExceptionWithAnotherGmail,
+    UserBannedException,
+)
 from src.modules.google_.greeting import setup_greeting_sheet
 from src.modules.google_.repository import google_link_repository
 from src.modules.google_.schemas import (
@@ -253,6 +257,12 @@ async def join_document(
     except UserAlreadyJoinedExceptionWithAnotherGmail as e:
         logger.error(f"User already joined: {e}")
         raise HTTPException(status_code=409, detail="User already joined the document with another gmail")
+    except InvalidGmailException as e:
+        logger.error(f"Invalid gmail: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Gmail {e.gmail} does not exist or is not associated with a Google account",
+        )
     except Exception as e:
         logger.error(
             f"Error: user {user_token_data.innohassle_id} tried to add {request.gmail} to document {slug}: {e}"
