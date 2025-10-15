@@ -24,7 +24,7 @@ dependencies = [
     "google-api-python-client>=2.184.0",
     "fastapi-derive-responses>=0.1.4",
     "motor>=3.7.1",
-    "beanie>=1.30.0,<2.0.0",
+    "beanie>=1.30.0,<3.0.0",
 ]
 
 [dependency-groups]
