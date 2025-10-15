@@ -1,14 +1,18 @@
 [project]
 name = "guard"
 version = "0.1.0"
+description = ""
+authors = [{ name = "one-zero-eight" }]
+urls = { homepage = "https://t.me/one_zero_eight" }
 readme = "README.md"
 requires-python = ">=3.12"
+
 dependencies = [
-    "authlib>=1.6.0",
+    "authlib>=1.6.5",
     "colorlog>=6.9.0",
     "fastapi>=0.115.12",
     "fastapi-swagger>=0.2.19",
-    "pydantic[email]>=2.11.5",
+    "pydantic[email]>=2.12.2",
     "pytz>=2025.2",
     "pyyaml>=6.0.2",
     "uvicorn>=0.34.2",
@@ -20,7 +24,7 @@ dependencies = [
     "google-api-python-client>=2.184.0",
     "fastapi-derive-responses>=0.1.4",
     "motor>=3.7.1",
-    "beanie==1.26.0",
+    "beanie>=1.30.0,<2.0.0",
 ]
 
 [dependency-groups]
@@ -34,18 +38,6 @@ dev = [
 
 [tool.ruff]
 line-length = 120
-lint.ignore = [
-    # wildcard imports are fine
-    "F403",
-    "F405",
-    "PLR",
-]
 lint.extend-select = ["I", "UP", "PL"]
-lint.extend-ignore = ["PLC0415"]
-target-version = "py312"
-
-[tool.coverage.run]
-omit = [
-    "src/prepare.py",
-    "src/api/__main__.py",
-]
+lint.extend-ignore = ["PLC0415", "PLR"]
+target-version = "py313"

@@ -1,4 +1,4 @@
-# Guard API | InNoHassle ecosystem
+# Guard
 
 > https://api.innohassle.ru/guard/v0
 
@@ -30,11 +30,14 @@ Guard API is a FastAPI-based service that:
 
 ### Technologies
 
-- [Python 3.12+](https://www.python.org/downloads/) & [uv](https://astral.sh/uv/)
-- [FastAPI](https://fastapi.tiangolo.com/) - Web framework
+- [Python 3.14](https://www.python.org/downloads/) & [uv](https://docs.astral.sh/uv/)
+- [FastAPI](https://fastapi.tiangolo.com/)
 - [Google Sheets API](https://developers.google.com/sheets/api) - Spreadsheet integration
 - [Google Drive API](https://developers.google.com/drive) - File permissions management
 - InNoHassle Accounts SDK - Authentication
+- Formatting and linting: [Ruff](https://docs.astral.sh/ruff/), [pre-commit](https://pre-commit.com/)
+- Deployment: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/),
+  [GitHub Actions](https://github.com/features/actions)
 
 ## How to use?
 
@@ -56,8 +59,8 @@ This ensures only authenticated Innopolis University community members can acces
 
 ### Set up for development
 
-1. Install [Python 3.12+](https://www.python.org/downloads/), [uv](https://docs.astral.sh/uv/), [Docker](https://docs.docker.com/engine/install/).
-2. Install project dependencies with [uv](https://docs.astral.sh/uv/cli/#install).
+1. Install [uv](https://docs.astral.sh/uv/) and [Docker](https://docs.docker.com/engine/install/)
+2. Install dependencies:
    ```bash
    uv sync
    ```
@@ -70,14 +73,16 @@ This ensures only authenticated Innopolis University community members can acces
    ```bash
    uv run -m src.api --reload
    ```
-6. Open http://localhost:8013 in your browser.
-   > The API will be reloaded automatically when you edit the code.
+   > Follow the provided instructions (if needed).
+4. Open in the browser: http://localhost:8013
+   > The api will be reloaded when you edit the code
 
 > [!IMPORTANT]
-> For endpoints requiring authorization, click "Authorize" button in Swagger UI!
+> For endpoints requiring authorization click "Authorize" button in Swagger UI
 
 > [!TIP]
-> Edit `settings.yaml` according to your needs, you can view schema in [settings.schema.yaml](settings.schema.yaml).
+> Edit `settings.yaml` according to your needs, you can view schema in
+> [config_schema.py](src/config_schema.py) and in [settings.schema.yaml](settings.schema.yaml)
 
 **Set up PyCharm integrations**
 
@@ -93,24 +98,41 @@ This ensures only authenticated Innopolis University community members can acces
 ### Deployment
 We use Docker with Docker Compose plugin to run the service on servers.
 
-1. Copy the file with settings: `cp settings.example.yaml settings.yaml`.
-2. Change settings in the `settings.yaml` file according to your needs
-   (check [settings.schema.yaml](settings.schema.yaml) for more info).
-3. Place your Google Service Account JSON file in the project root (default name: `inh-plugin.json`)
-4. Install Docker with Docker Compose.
-5. Build and run docker container: `docker compose up --build`.
+1. Copy the file with environment variables: `cp .example.env .env`
+2. Change environment variables in the `.env` file
+3. Copy the file with settings: `cp settings.example.yaml settings.yaml`
+4. Change settings in the `settings.yaml` file according to your needs
+   (check [settings.schema.yaml](settings.schema.yaml) for more info)
+5. Place your Google Service Account JSON file in the project root (default name: `inh-plugin.json`)
+6. Install Docker with Docker Compose
+7. Run the containers: `docker compose up --build --wait`
+8. Check the logs: `docker compose logs -f`
 
 ## FAQ
 
-### How to run tests?
+### Be up to date with the template!
 
-Run `uv run pytest` to run all tests.
+Check https://github.com/one-zero-eight/fastapi-template for updates once in a while.
 
+### How to update dependencies
 
-### How to update dependencies?
-1. Run `uv sync -U` to update all dependencies.
-2. Run `uv pip list --outdated` to check for outdated dependencies.
-3. Run `uv add -U <dependency_name>` to update a specific dependency in `pyproject.toml`.
+1. Run `uv sync --upgrade` to update uv.lock file and install the latest versions of the dependencies.
+2. Run `uv tree --outdated --depth=1` will show what package versions are installed and what are the latest versions.
+3. Run `uv run pre-commit autoupdate`
+
+Also, Dependabot will help you to keep your dependencies up-to-date, see [dependabot.yaml](.github/dependabot.yaml).
+{% if cookiecutter.database == "mongo" %}
+### How to dump the database
+
+1. Dump:
+   ```bash
+   docker compose exec db sh -c 'mongodump "mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@127.0.0.1:27017/db?authSource=admin" --db=db --out=dump/'
+   ```
+2. Restore:
+   ```bash
+   docker compose exec db sh -c 'mongorestore "mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@127.0.0.1:27017/db?authSource=admin" --drop /dump/db'
+   ```
+{% endif %}
 
 ## Contributing
 
