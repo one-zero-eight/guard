@@ -24,6 +24,17 @@ class Mongo(SettingBaseModel):
     "MongoDB database connection URI"
 
 
+class Google(SettingBaseModel):
+    """Google API settings (OAuth + optional Drive folder)"""
+
+    oauth_client_secret_file: FilePath | None = None
+    "Path to Google OAuth client_secret.json (Desktop app) for user OAuth"
+    oauth_token_file: Path | None = None
+    "Path to Google OAuth token.json (stores refresh token)"
+    drive_folder_id: str | None = None
+    "Google Drive folder ID where new files will be created (optional)"
+
+
 class Settings(SettingBaseModel):
     """Settings for the application."""
 
@@ -40,8 +51,12 @@ class Settings(SettingBaseModel):
     "MongoDB settings"
     innohassle_url: str = "https://innohassle.ru"
     "URL of the InNoHassle to use for links"
+    base_url: str = "https://innohassle.ru"
+    "Base URL for generating join links"
     google_service_account_file: FilePath = Path("inh-plugin.json")
     "Path to the Google service account file with credentials"
+    google: Google = Google()
+    "Google API settings (OAuth + Drive)"
 
     @classmethod
     def from_yaml(cls, path: Path) -> "Settings":

@@ -1,4 +1,6 @@
 inh-plugin.json
+token.json
+client_secret.json
 data/options.json
 
 # Byte-compiled / optimized / DLL files

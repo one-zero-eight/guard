@@ -4,110 +4,118 @@ from string import ascii_letters, digits
 
 from beanie import PydanticObjectId
 
+from src.modules.google_.constants import SLUG_LENGTH
 from src.modules.google_.exceptions import UserBannedException
-from src.storages.mongo.models import GoogleLink, GoogleLinkBan, GoogleLinkJoin, GoogleLinkUserRole, UserID
+from src.storages.mongo.models import (
+    GoogleFile,
+    GoogleFileSSOBan,
+    GoogleFileSSOJoin,
+    GoogleFileType,
+    GoogleFileUserRole,
+    UserID,
+)
 
 
 def generate_slug():
-    return "".join(random.choices(ascii_letters + digits, k=10))
+    return "".join(random.choices(ascii_letters + digits, k=SLUG_LENGTH))
 
 
-def is_user_banned(
-    banned: list[GoogleLinkBan],
-    user_id: PydanticObjectId | None = None,
-    innomail: str | None = None,
-    gmail: str | None = None,
-) -> bool:
-    for ban in banned:
-        if user_id and ban.user_id == user_id:
-            return True
-        if innomail and ban.innomail == innomail:
-            return True
-        if gmail and ban.gmail == gmail:
-            return True
-    return False
-
-
-class GoogleLinkRepository:
-    async def setup_spreadsheet(
-        self, author_id: UserID, user_role: GoogleLinkUserRole, spreadsheet_id: str, title: str | None = None
-    ) -> GoogleLink:
-        link = GoogleLink(
+class GoogleFileRepository:
+    async def create_file(
+        self,
+        author_id: UserID,
+        user_role: GoogleFileUserRole,
+        file_id: str,
+        file_type: GoogleFileType,
+        title: str,
+    ) -> GoogleFile:
+        file = GoogleFile(
             author_id=author_id,
             user_role=user_role,
-            spreadsheet_id=spreadsheet_id,
+            file_id=file_id,
+            file_type=file_type,
             slug=generate_slug(),
             title=title,
-            joins=[],
-            banned=[],
+            sso_joins=[],
+            sso_banned=[],
         )
-        await link.save()
-        return link
+        await file.save()
+        return file
 
-    async def get_by_spreadsheet_id(self, spreadsheet_id: str) -> GoogleLink | None:
-        return await GoogleLink.find_one(GoogleLink.spreadsheet_id == spreadsheet_id)
+    async def get_by_file_id(self, file_id: str) -> GoogleFile | None:
+        return await GoogleFile.find_one(GoogleFile.file_id == file_id)
 
-    async def get_by_slug(self, slug: str) -> GoogleLink | None:
-        return await GoogleLink.find_one(GoogleLink.slug == slug)
+    async def get_by_slug(self, slug: str) -> GoogleFile | None:
+        return await GoogleFile.find_one(GoogleFile.slug == slug)
 
-    async def get_by_author_id(self, author_id: str) -> list[GoogleLink]:
-        return await GoogleLink.find(GoogleLink.author_id == PydanticObjectId(author_id)).to_list()
+    async def get_by_author_id(self, author_id: str) -> list[GoogleFile]:
+        return await GoogleFile.find(GoogleFile.author_id == PydanticObjectId(author_id)).to_list()
 
-    async def add_join(self, slug: str, user_id: UserID, gmail: str, innomail: str, permission_id: str | None = None):
-        link = await self.get_by_slug(slug)
-        if link:
-            if any(join.gmail == gmail for join in link.joins):
-                return link
-            if is_user_banned(banned=link.banned, user_id=user_id, innomail=innomail, gmail=gmail):
-                raise UserBannedException(user_id=user_id)
-            link.joins.append(
-                GoogleLinkJoin(
-                    user_id=user_id,
-                    gmail=gmail,
-                    innomail=innomail,
-                    joined_at=datetime.now(),
-                    permission_id=permission_id,
-                )
+    async def join_user_to_file(
+        self, slug: str, user_id: UserID, gmail: str, innomail: str, permission_id: str | None = None
+    ):
+        file = await self.get_by_slug(slug)
+        if not file:
+            return None
+
+        if any(join.gmail == gmail for join in file.sso_joins):
+            return file
+
+        if any(ban.user_id == user_id for ban in file.sso_banned):
+            raise UserBannedException(user_id=user_id)
+
+        file.sso_joins.append(
+            GoogleFileSSOJoin(
+                user_id=user_id,
+                gmail=gmail,
+                innomail=innomail,
+                joined_at=datetime.now(),
+                permission_id=permission_id,
             )
-            await link.save()
-            return link
-        return None
+        )
+        await file.save()
+        return file
 
-    async def add_banned(self, slug: str, user_id: UserID, gmail: str, innomail: str):
-        link = await self.get_by_slug(slug)
-        if link:
-            link.joins = [j for j in link.joins if j.user_id != user_id]
-            if any(ban.user_id == user_id for ban in link.banned):
-                await link.save()
-                return link
-            link.banned.append(
-                GoogleLinkBan(
-                    user_id=user_id,
-                    gmail=gmail,
-                    innomail=innomail,
-                    banned_at=datetime.now(),
-                )
+    async def ban_user_from_file(self, slug: str, user_id: UserID, gmail: str, innomail: str):
+        file = await self.get_by_slug(slug)
+        if not file:
+            return None
+
+        file.sso_joins = [j for j in file.sso_joins if j.user_id != user_id]
+
+        if any(ban.user_id == user_id for ban in file.sso_banned):
+            await file.save()
+            return file
+
+        file.sso_banned.append(
+            GoogleFileSSOBan(
+                user_id=user_id,
+                gmail=gmail,
+                innomail=innomail,
+                banned_at=datetime.now(),
             )
-            await link.save()
-            return link
-        return None
+        )
+        await file.save()
+        return file
 
-    async def remove_banned(self, slug: str, user_id: UserID):
-        link = await self.get_by_slug(slug)
-        if link:
-            if not any(ban.user_id == user_id for ban in link.banned):
-                return link
-            link.banned = [ban for ban in link.banned if ban.user_id != user_id]
-            await link.save()
-            return link
-        return None
+    async def unban_user_from_file(self, slug: str, user_id: UserID):
+        file = await self.get_by_slug(slug)
+        if not file:
+            return None
+
+        if not any(ban.user_id == user_id for ban in file.sso_banned):
+            return file
+
+        file.sso_banned = [ban for ban in file.sso_banned if ban.user_id != user_id]
+        await file.save()
+        return file
 
     async def delete_by_slug(self, slug: str) -> bool:
-        link = await self.get_by_slug(slug)
-        if not link:
+        file = await self.get_by_slug(slug)
+        if not file:
             return False
-        await link.delete()
+        await file.delete()
         return True
 
 
-google_link_repository = GoogleLinkRepository()
+google_file_repository = GoogleFileRepository()

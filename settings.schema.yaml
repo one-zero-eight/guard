@@ -19,6 +19,36 @@ $defs:
     - api_jwt_token
     title: Accounts
     type: object
+  Google:
+    additionalProperties: false
+    description: Google API settings (OAuth + optional Drive folder)
+    properties:
+      oauth_client_secret_file:
+        anyOf:
+        - format: file-path
+          type: string
+        - type: 'null'
+        default: null
+        description: Path to Google OAuth client_secret.json (Desktop app) for user
+          OAuth
+        title: Oauth Client Secret File
+      oauth_token_file:
+        anyOf:
+        - format: path
+          type: string
+        - type: 'null'
+        default: null
+        description: Path to Google OAuth token.json (stores refresh token)
+        title: Oauth Token File
+      drive_folder_id:
+        anyOf:
+        - type: string
+        - type: 'null'
+        default: null
+        description: Google Drive folder ID where new files will be created (optional)
+        title: Drive Folder Id
+    title: Google
+    type: object
   Mongo:
     additionalProperties: false
     description: MongoDB settings
@@ -60,12 +90,24 @@ properties:
     description: URL of the InNoHassle to use for links
     title: Innohassle Url
     type: string
+  base_url:
+    default: https://innohassle.ru
+    description: Base URL for generating join links
+    title: Base Url
+    type: string
   google_service_account_file:
     default: inh-plugin.json
     description: Path to the Google service account file with credentials
     format: file-path
     title: Google Service Account File
     type: string
+  google:
+    $ref: '#/$defs/Google'
+    default:
+      oauth_client_secret_file: null
+      oauth_token_file: null
+      drive_folder_id: null
+    description: Google API settings (OAuth + Drive)
 required:
 - accounts
 - mongo

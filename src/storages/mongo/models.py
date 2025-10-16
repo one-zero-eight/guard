@@ -9,7 +9,7 @@ from src.storages.mongo.__base__ import CustomDocument
 type UserID = PydanticObjectId
 
 
-class GoogleLinkJoin(BaseModel):
+class GoogleFileSSOJoin(BaseModel):
     user_id: UserID
     gmail: str
     innomail: str
@@ -17,29 +17,31 @@ class GoogleLinkJoin(BaseModel):
     permission_id: str | None = None
 
 
-class GoogleLinkBan(BaseModel):
+class GoogleFileSSOBan(BaseModel):
     user_id: UserID
     gmail: str
     innomail: str
     banned_at: datetime
 
 
-type GoogleLinkUserRole = Literal["writer", "reader"]
+type GoogleFileUserRole = Literal["writer", "reader"]
+type GoogleFileType = Literal["spreadsheet", "document"]
 
 
-class GoogleLinkSchema(BaseModel):
+class GoogleFileSchema(BaseModel):
     author_id: UserID
-    user_role: GoogleLinkUserRole
+    user_role: GoogleFileUserRole
     slug: str
-    spreadsheet_id: str
-    title: str | None = None
+    file_id: str
+    file_type: GoogleFileType
+    title: str
     expire_at: datetime | None = None
-    joins: list[GoogleLinkJoin]
-    banned: list[GoogleLinkBan]
+    sso_joins: list[GoogleFileSSOJoin]
+    sso_banned: list[GoogleFileSSOBan]
 
 
-class GoogleLink(GoogleLinkSchema, CustomDocument):
+class GoogleFile(GoogleFileSchema, CustomDocument):
     pass
 
 
-document_models = [GoogleLink]
+document_models = [GoogleFile]
