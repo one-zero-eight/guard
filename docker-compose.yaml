@@ -14,7 +14,8 @@ services:
       - "8013:8000"
     volumes:
       - "./settings.yaml:/app/settings.yaml:ro" # Read-only settings file
-      - "./inh-plugin.json:/app/inh-plugin.json:ro"  # Read-only Google Service Account JSON file
+      - "./client_secret.json:/app/client_secret.json:ro" # Read-only Google OAuth client_secret.json file
+      - "./token.json:/app/token.json:ro" # Read-only Google OAuth token.json file
 
   db:
     # See more: https://hub.docker.com/_/mongo
