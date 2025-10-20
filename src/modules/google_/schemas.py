@@ -40,16 +40,16 @@ class CreateFileResponse(BaseModel):
     "Join link for users"
 
 
-class TransferFileRequest(BaseModel):
+class CopyFileRequest(BaseModel):
     file_id: str
-    "Existing Google File ID to transfer into system"
+    "Existing Google File ID to copy"
     user_role: Role
     "Role for future respondents (writer or reader)"
 
 
-class TransferFileResponse(BaseModel):
+class CopyFileResponse(BaseModel):
     file_id: str
-    "Google File ID"
+    "New Google File ID (copy)"
     file_type: FileType
     "Type of file (spreadsheet or document)"
     title: str
@@ -58,8 +58,6 @@ class TransferFileResponse(BaseModel):
     "Role for users (writer or reader)"
     join_link: str
     "Join link for users"
-    cleanup_recommended: bool
-    "True if more than 2 user permissions exist (owner + previous owner)"
 
 
 class GoogleFileSSOJoinInfo(BaseModel):
@@ -136,6 +134,20 @@ class CleanupResponse(BaseModel):
 class DeleteFileResponse(BaseModel):
     message: str
     "Message"
+
+
+class UpdateFileRequest(BaseModel):
+    title: str
+    "New title for the file"
+
+
+class UpdateFileResponse(BaseModel):
+    file_id: str
+    "Google File ID"
+    title: str
+    "Updated title"
+    message: str
+    "Success message"
 
 
 class UnbanUserResponse(BaseModel):

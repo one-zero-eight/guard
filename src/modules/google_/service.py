@@ -3,7 +3,6 @@ from functools import lru_cache
 
 from beanie import PydanticObjectId
 from fastapi import HTTPException
-from google.oauth2.credentials import Credentials as UserCredentials
 from google.oauth2.service_account import Credentials as SaCredentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -15,47 +14,41 @@ from src.modules.google_.constants import FileTypes, HTTPStatuses, UserRoles
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
-    # "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/documents",
 ]
 
 
 @lru_cache(maxsize=1)
 def get_sa_creds():
-    return SaCredentials.from_service_account_info(
-        json.loads(settings.google_service_account_file.read_text()), scopes=SCOPES
+    creds = SaCredentials.from_service_account_info(
+        json.loads(settings.google.service_account_file_path.read_text()), scopes=SCOPES
     )
-
-
-@lru_cache(maxsize=1)
-def get_user_creds():
-    if not settings.google.oauth_token_file:
-        raise RuntimeError("google_oauth_token_file is not configured in settings")
-    return UserCredentials.from_authorized_user_file(str(settings.google.oauth_token_file), SCOPES)
+    if settings.google.subject:
+        creds = creds.with_subject(settings.google.subject)
+    return creds
 
 
 @lru_cache(maxsize=1)
 def sheets_service():
-    return build("sheets", "v4", credentials=get_user_creds(), cache_discovery=False)
+    return build("sheets", "v4", credentials=get_sa_creds(), cache_discovery=False)
 
 
 @lru_cache(maxsize=1)
 def drive_service():
-    return build("drive", "v3", credentials=get_user_creds(), cache_discovery=False)
+    return build("drive", "v3", credentials=get_sa_creds(), cache_discovery=False)
 
 
 @lru_cache(maxsize=1)
 def docs_service():
-    return build("docs", "v1", credentials=get_user_creds(), cache_discovery=False)
+    return build("docs", "v1", credentials=get_sa_creds(), cache_discovery=False)
 
 
 def service_email() -> str:
-    """Return email of the authenticated OAuth user via Drive About API."""
+    """Return service account email from credentials."""
     try:
-        drive = drive_service()
-        about = drive.about().get(fields="user").execute()
-        return about.get("user", {}).get("emailAddress", "unknown")
+        return settings.google.subject or get_sa_creds().service_account_email
     except Exception as e:
-        logger.error(f"Failed to get service email via Drive About API: {e}")
+        logger.error(f"Failed to get service account email: {e}")
         return "unknown"
 
 
@@ -97,6 +90,46 @@ def create_google_file(file_type: str, title: str) -> str:
         raise ValueError(f"Unknown file type: {file_type}")
 
 
+def verify_service_account_access(file_id: str) -> bool:
+    """Check if service account has access to the file."""
+    try:
+        drive = drive_service()
+        drive.files().get(fileId=file_id, fields="id").execute()
+        return True
+    except HttpError as e:
+        if e.resp.status in {403, 404}:
+            return False
+        raise
+
+
+def copy_google_file(file_id: str) -> tuple[str, str, str]:
+    """Copy a Google file and return (new_file_id, title, mime_type)."""
+    drive = drive_service()
+
+    if not verify_service_account_access(file_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Service account does not have access to file {file_id}. "
+            "Please share the file with the service account first.",
+        )
+
+    meta = drive.files().get(fileId=file_id, fields="name, mimeType").execute()
+    title = meta.get("name", "Untitled")
+    mime_type = meta.get("mimeType", "")
+
+    body = {"name": title}
+    if settings.google.drive_folder_id:
+        body["parents"] = [settings.google.drive_folder_id]
+
+    copied_file = drive.files().copy(fileId=file_id, body=body, fields="id").execute()
+    new_file_id = copied_file["id"]
+
+    _disable_writers_can_share(new_file_id)
+
+    logger.info(f"Copied file {file_id} to {new_file_id} with title '{title} (Copy)'")
+    return new_file_id, title, mime_type
+
+
 def verify_file_ownership(file, user_id: str) -> None:
     if str(file.author_id) != user_id:
         raise HTTPException(status_code=HTTPStatuses.FORBIDDEN, detail="You are not the author of this file")
@@ -111,6 +144,17 @@ def delete_google_file(file_id: str) -> bool:
     except Exception as e:
         logger.error(f"Error deleting file {file_id}: {e}")
         return False
+
+
+def update_file_title(file_id: str, title: str) -> None:
+    """Update the title of a Google Drive file."""
+    try:
+        drive = drive_service()
+        drive.files().update(fileId=file_id, body={"name": title}).execute()
+        logger.info(f"Updated file {file_id} title to '{title}'")
+    except Exception as e:
+        logger.error(f"Error updating file {file_id} title: {e}")
+        raise
 
 
 def revoke_file_permission(file_id: str, permission_id: str) -> bool:

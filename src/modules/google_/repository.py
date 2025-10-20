@@ -117,5 +117,13 @@ class GoogleFileRepository:
         await file.delete()
         return True
 
+    async def update_file_title(self, slug: str, title: str) -> GoogleFile | None:
+        file = await self.get_by_slug(slug)
+        if not file:
+            return None
+        file.title = title
+        await file.save()
+        return file
+
 
 google_file_repository = GoogleFileRepository()

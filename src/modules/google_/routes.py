@@ -15,6 +15,8 @@ from src.modules.google_.schemas import (
     BanUserRequest,
     BanUserResponse,
     CleanupResponse,
+    CopyFileRequest,
+    CopyFileResponse,
     CreateFileRequest,
     CreateFileResponse,
     DeleteFileResponse,
@@ -25,22 +27,21 @@ from src.modules.google_.schemas import (
     JoinFileRequest,
     JoinFileResponse,
     ServiceAccountEmailResponse,
-    TransferFileRequest,
-    TransferFileResponse,
     UnbanUserResponse,
+    UpdateFileRequest,
+    UpdateFileResponse,
 )
 from src.modules.google_.service import (
-    accept_ownership_if_pending,
     add_user_to_file,
-    count_user_permissions,
+    copy_google_file,
     create_google_file,
     delete_google_file,
     generate_join_link,
     get_user_id_from_token,
-    remove_public_links_and_lock_sharing,
     revoke_file_permission,
     service_email,
     sheets_service,
+    update_file_title,
     verify_file_ownership,
 )
 
@@ -125,58 +126,55 @@ async def create_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/files/transfer")
-async def transfer_file(
-    request: TransferFileRequest,
+@router.post("/files/copy")
+async def copy_file(
+    request: CopyFileRequest,
     user_data: VerifyTokenDep,
-) -> TransferFileResponse:
-    """Accept ownership invitation for existing file, add it to system, cleanup public access, lock editors' sharing."""
+) -> CopyFileResponse:
+    """Copy an existing Google file to service account's drive and add it to the system."""
     user_token_data, _token = user_data
     try:
-        accepted = accept_ownership_if_pending(request.file_id)
-        if not accepted:
-            raise HTTPException(status_code=400, detail="Ownership invitation not found for this file")
+        logger.info(
+            f"Copying file | user_id={user_token_data.innohassle_id} "
+            f"source_file_id={request.file_id} user_role={request.user_role}"
+        )
 
-        remove_public_links_and_lock_sharing(request.file_id)
+        new_file_id, title, mime_type = copy_google_file(request.file_id)
 
-        from src.modules.google_.service import drive_service
-
-        drive = drive_service()
-        meta = drive.files().get(fileId=request.file_id, fields="name, mimeType").execute()
-        title = meta.get("name")
-        mime = meta.get("mimeType", "")
-        if "spreadsheet" in mime:
+        if "spreadsheet" in mime_type:
             file_type = "spreadsheet"
-        elif "document" in mime:
+        elif "document" in mime_type:
             file_type = "document"
         else:
-            raise HTTPException(status_code=400, detail=f"Unsupported mimeType: {mime}")
+            delete_google_file(new_file_id)
+            raise HTTPException(status_code=400, detail=f"Unsupported mimeType: {mime_type}")
 
         file = await google_file_repository.create_file(
             author_id=get_user_id_from_token(user_token_data),
             user_role=request.user_role,
-            file_id=request.file_id,
+            file_id=new_file_id,
             file_type=file_type,  # type: ignore[arg-type]
-            title=title,
+            title=f"{title} (Copy)",
         )
 
         join_link = generate_join_link(file.slug)
 
-        users_count = count_user_permissions(request.file_id)
-        cleanup_recommended = users_count > 2
+        logger.info(
+            f"File copied successfully | user_id={user_token_data.innohassle_id} "
+            f"source_file_id={request.file_id} new_file_id={new_file_id}"
+        )
 
-        return TransferFileResponse(
-            file_id=request.file_id,
+        return CopyFileResponse(
+            file_id=new_file_id,
             file_type=file_type,  # type: ignore[arg-type]
-            title=title,
+            title=f"{title} (Copy)",
             user_role=request.user_role,
             join_link=join_link,
-            cleanup_recommended=cleanup_recommended,
         )
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Transfer file error: {e}")
+        logger.error(f"Copy file error | source_file_id={request.file_id} error={e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -202,6 +200,46 @@ async def delete_file(
         raise
     except Exception as e:
         logger.error(f"Error deleting file | slug={slug} error={e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/files/{slug}")
+async def update_file(
+    slug: str,
+    request: UpdateFileRequest,
+    user_data: VerifyTokenDep,
+) -> UpdateFileResponse:
+    """Update file title (author only)."""
+    user_token_data, _token = user_data
+    try:
+        file = await google_file_repository.get_by_slug(slug)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        verify_file_ownership(file, user_token_data.innohassle_id)
+
+        logger.info(
+            f"Updating file title | user_id={user_token_data.innohassle_id} "
+            f"slug={slug} old_title='{file.title}' new_title='{request.title}'"
+        )
+
+        update_file_title(file.file_id, request.title)
+
+        updated_file = await google_file_repository.update_file_title(slug, request.title)
+        if not updated_file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        logger.info(f"File title updated | slug={slug} title='{request.title}'")
+
+        return UpdateFileResponse(
+            file_id=file.file_id,
+            title=request.title,
+            message="File title updated successfully",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating file | slug={slug} error={e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

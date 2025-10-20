@@ -9,6 +9,6 @@ mongo:
   uri: mongodb://mongoadmin:secret@localhost:27017/db?authSource=admin
 base_url: "https://innohassle.ru"
 google:
-  oauth_client_secret_file: ./client_secret.json
-  oauth_token_file: ./token.json
+  service_account_file_path: service_account.json
+  subject: null
   drive_folder_id: null

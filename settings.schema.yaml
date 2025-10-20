@@ -21,25 +21,22 @@ $defs:
     type: object
   Google:
     additionalProperties: false
-    description: Google API settings (OAuth + optional Drive folder)
+    description: Google API settings (Service Account + Drive)
     properties:
-      oauth_client_secret_file:
+      service_account_file_path:
+        default: service_account.json
+        description: Path to the Google service account file with credentials
+        format: file-path
+        title: Service Account File Path
+        type: string
+      subject:
         anyOf:
-        - format: file-path
-          type: string
+        - type: string
         - type: 'null'
         default: null
-        description: Path to Google OAuth client_secret.json (Desktop app) for user
-          OAuth
-        title: Oauth Client Secret File
-      oauth_token_file:
-        anyOf:
-        - format: path
-          type: string
-        - type: 'null'
-        default: null
-        description: Path to Google OAuth token.json (stores refresh token)
-        title: Oauth Token File
+        description: Email address to impersonate for domain-wide delegation (e.g.,
+          service@innoguard.ru)
+        title: Subject
       drive_folder_id:
         anyOf:
         - type: string
@@ -95,21 +92,11 @@ properties:
     description: Base URL for generating join links
     title: Base Url
     type: string
-  google_service_account_file:
-    default: inh-plugin.json
-    description: Path to the Google service account file with credentials
-    format: file-path
-    title: Google Service Account File
-    type: string
   google:
     $ref: '#/$defs/Google'
-    default:
-      oauth_client_secret_file: null
-      oauth_token_file: null
-      drive_folder_id: null
-    description: Google API settings (OAuth + Drive)
 required:
 - accounts
 - mongo
+- google
 title: Settings
 type: object
