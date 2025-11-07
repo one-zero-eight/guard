@@ -8,11 +8,15 @@ from src.storages.mongo.__base__ import CustomDocument
 
 type UserID = PydanticObjectId
 
+type GoogleFileUserRole = Literal["writer", "reader"]
+type GoogleFileType = Literal["spreadsheet", "document"]
+
 
 class GoogleFileSSOJoin(BaseModel):
     user_id: UserID
     gmail: str
     innomail: str
+    role: GoogleFileUserRole
     joined_at: datetime
     permission_id: str | None = None
 
@@ -24,13 +28,9 @@ class GoogleFileSSOBan(BaseModel):
     banned_at: datetime
 
 
-type GoogleFileUserRole = Literal["writer", "reader"]
-type GoogleFileType = Literal["spreadsheet", "document"]
-
-
 class GoogleFileSchema(BaseModel):
     author_id: UserID
-    user_role: GoogleFileUserRole
+    default_role: GoogleFileUserRole
     slug: str
     file_id: str
     file_type: GoogleFileType

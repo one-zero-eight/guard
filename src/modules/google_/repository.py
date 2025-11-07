@@ -24,14 +24,14 @@ class GoogleFileRepository:
     async def create_file(
         self,
         author_id: UserID,
-        user_role: GoogleFileUserRole,
+        default_role: GoogleFileUserRole,
         file_id: str,
         file_type: GoogleFileType,
         title: str,
     ) -> GoogleFile:
         file = GoogleFile(
             author_id=author_id,
-            user_role=user_role,
+            default_role=default_role,
             file_id=file_id,
             file_type=file_type,
             slug=generate_slug(),
@@ -52,7 +52,13 @@ class GoogleFileRepository:
         return await GoogleFile.find(GoogleFile.author_id == PydanticObjectId(author_id)).to_list()
 
     async def join_user_to_file(
-        self, slug: str, user_id: UserID, gmail: str, innomail: str, permission_id: str | None = None
+        self,
+        slug: str,
+        user_id: UserID,
+        gmail: str,
+        innomail: str,
+        role: GoogleFileUserRole,
+        permission_id: str | None = None,
     ):
         file = await self.get_by_slug(slug)
         if not file:
@@ -69,6 +75,7 @@ class GoogleFileRepository:
                 user_id=user_id,
                 gmail=gmail,
                 innomail=innomail,
+                role=role,
                 joined_at=datetime.now(),
                 permission_id=permission_id,
             )
@@ -122,6 +129,27 @@ class GoogleFileRepository:
         if not file:
             return None
         file.title = title
+        await file.save()
+        return file
+
+    async def update_user_role(self, slug: str, user_id: UserID, role: GoogleFileUserRole) -> GoogleFile | None:
+        file = await self.get_by_slug(slug)
+        if not file:
+            return None
+
+        for join in file.sso_joins:
+            if join.user_id == user_id:
+                join.role = role
+                await file.save()
+                return file
+
+        return None
+
+    async def update_default_role(self, slug: str, role: GoogleFileUserRole) -> GoogleFile | None:
+        file = await self.get_by_slug(slug)
+        if not file:
+            return None
+        file.default_role = role
         await file.save()
         return file
 

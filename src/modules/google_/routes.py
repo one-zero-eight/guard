@@ -28,8 +28,12 @@ from src.modules.google_.schemas import (
     JoinFileResponse,
     ServiceAccountEmailResponse,
     UnbanUserResponse,
+    UpdateDefaultRoleRequest,
+    UpdateDefaultRoleResponse,
     UpdateFileRequest,
     UpdateFileResponse,
+    UpdateUserRoleRequest,
+    UpdateUserRoleResponse,
 )
 from src.modules.google_.service import (
     add_user_to_file,
@@ -41,7 +45,9 @@ from src.modules.google_.service import (
     revoke_file_permission,
     service_email,
     sheets_service,
+    update_all_user_permissions,
     update_file_title,
+    update_user_permission,
     verify_file_ownership,
 )
 
@@ -83,14 +89,14 @@ async def create_file(
         logger.info(
             f"Creating file | user_id={user_token_data.innohassle_id} "
             f"email={user_token_data.email} type={request.file_type} "
-            f"title='{request.title}' role={request.user_role}"
+            f"title='{request.title}' role={request.default_role}"
         )
 
         file_id = create_google_file(file_type=request.file_type, title=request.title)
 
         file = await google_file_repository.create_file(
             author_id=get_user_id_from_token(user_token_data),
-            user_role=request.user_role,
+            default_role=request.default_role,
             file_id=file_id,
             file_type=request.file_type,
             title=request.title,
@@ -104,14 +110,14 @@ async def create_file(
                 sheets_service=sheets_service(),
                 spreadsheet_id=file_id,
                 join_link=join_link,
-                respondent_role=request.user_role,
+                respondent_role=request.default_role,
             )
 
         return CreateFileResponse(
             file_id=file_id,
             file_type=request.file_type,
             title=request.title,
-            user_role=request.user_role,
+            default_role=request.default_role,
             join_link=join_link,
         )
     except HttpError as e:
@@ -136,7 +142,7 @@ async def copy_file(
     try:
         logger.info(
             f"Copying file | user_id={user_token_data.innohassle_id} "
-            f"source_file_id={request.file_id} user_role={request.user_role}"
+            f"source_file_id={request.file_id} default_role={request.default_role}"
         )
 
         new_file_id, title, mime_type = copy_google_file(request.file_id)
@@ -151,7 +157,7 @@ async def copy_file(
 
         file = await google_file_repository.create_file(
             author_id=get_user_id_from_token(user_token_data),
-            user_role=request.user_role,
+            default_role=request.default_role,
             file_id=new_file_id,
             file_type=file_type,  # type: ignore[arg-type]
             title=f"{title} (Copy)",
@@ -168,7 +174,7 @@ async def copy_file(
             file_id=new_file_id,
             file_type=file_type,  # type: ignore[arg-type]
             title=f"{title} (Copy)",
-            user_role=request.user_role,
+            default_role=request.default_role,
             join_link=join_link,
         )
     except HTTPException:
@@ -254,7 +260,7 @@ async def get_files(
         return [
             GoogleFile(
                 author_id=file.author_id,
-                user_role=file.user_role,
+                default_role=file.default_role,
                 slug=file.slug,
                 file_id=file.file_id,
                 file_type=file.file_type,
@@ -288,7 +294,7 @@ async def get_file(
 
         return GoogleFile(
             author_id=file.author_id,
-            user_role=file.user_role,
+            default_role=file.default_role,
             slug=file.slug,
             file_id=file.file_id,
             file_type=file.file_type,
@@ -299,6 +305,7 @@ async def get_file(
                     user_id=join.user_id,
                     gmail=join.gmail,
                     innomail=join.innomail,
+                    role=join.role,
                     joined_at=join.joined_at,
                 )
                 for join in file.sso_joins
@@ -507,4 +514,106 @@ async def cleanup_file_permissions(
         raise
     except Exception as e:
         logger.error(f"Cleanup file permissions error for {slug}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/files/{slug}/joins/{user_id}/role")
+async def update_user_role(
+    slug: str,
+    user_id: str,
+    request: UpdateUserRoleRequest,
+    user_data: VerifyTokenDep,
+) -> UpdateUserRoleResponse:
+    """Update individual user role in the file."""
+    user_token_data, _token = user_data
+    try:
+        file = await google_file_repository.get_by_slug(slug)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        verify_file_ownership(file, user_token_data.innohassle_id)
+
+        try:
+            user_oid = PydanticObjectId(user_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid user_id")
+
+        join_to_update = None
+        for join in file.sso_joins:
+            if join.user_id == user_oid:
+                join_to_update = join
+                break
+
+        if not join_to_update:
+            raise HTTPException(status_code=404, detail=f"User with user_id {user_id} not found in joins")
+
+        if not join_to_update.permission_id:
+            raise HTTPException(status_code=400, detail="User does not have a permission_id")
+
+        logger.info(
+            f"Updating user role | author_id={user_token_data.innohassle_id} "
+            f"user_id={user_id} slug={slug} new_role={request.role}"
+        )
+
+        update_user_permission(file.file_id, join_to_update.permission_id, request.role)
+
+        await google_file_repository.update_user_role(slug=slug, user_id=user_oid, role=request.role)
+
+        logger.info(f"User role updated successfully | user_id={user_id} slug={slug} role={request.role}")
+
+        return UpdateUserRoleResponse(message=f"Successfully updated role for user {user_id}")
+
+    except HTTPException:
+        raise
+    except HttpError as e:
+        logger.error(f"Google API error while updating user role: {e}")
+        raise HTTPException(status_code=e.resp.status, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error updating user role | slug={slug} user_id={user_id} error={e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/files/{slug}/role")
+async def update_default_role(
+    slug: str,
+    request: UpdateDefaultRoleRequest,
+    user_data: VerifyTokenDep,
+) -> UpdateDefaultRoleResponse:
+    """Update default role for the file and update all existing user roles."""
+    user_token_data, _token = user_data
+    try:
+        file = await google_file_repository.get_by_slug(slug)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        verify_file_ownership(file, user_token_data.innohassle_id)
+
+        logger.info(
+            f"Updating default role | author_id={user_token_data.innohassle_id} "
+            f"slug={slug} new_role={request.role}"
+        )
+
+        updated_count = update_all_user_permissions(file.file_id, request.role, file.sso_joins)
+
+        await google_file_repository.update_default_role(slug=slug, role=request.role)
+
+        for join in file.sso_joins:
+            await google_file_repository.update_user_role(slug=slug, user_id=join.user_id, role=request.role)
+
+        logger.info(
+            f"Default role updated successfully | slug={slug} role={request.role} "
+            f"updated_permissions={updated_count}"
+        )
+
+        return UpdateDefaultRoleResponse(
+            message=f"Successfully updated default role to {request.role} and updated {updated_count} user permissions"
+        )
+
+    except HTTPException:
+        raise
+    except HttpError as e:
+        logger.error(f"Google API error while updating default role: {e}")
+        raise HTTPException(status_code=e.resp.status, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error updating default role | slug={slug} error={e}")
         raise HTTPException(status_code=500, detail=str(e))

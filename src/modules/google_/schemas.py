@@ -23,8 +23,8 @@ class CreateFileRequest(BaseModel):
     "Type of file to create (spreadsheet or document)"
     title: str
     "Title of the file"
-    user_role: Role
-    "Role for users (writer or reader)"
+    default_role: Role
+    "Default role for users (writer or reader)"
 
 
 class CreateFileResponse(BaseModel):
@@ -34,8 +34,8 @@ class CreateFileResponse(BaseModel):
     "Type of file (spreadsheet or document)"
     title: str
     "Title of the file"
-    user_role: Role
-    "Role for users (writer or reader)"
+    default_role: Role
+    "Default role for users (writer or reader)"
     join_link: str
     "Join link for users"
 
@@ -43,8 +43,8 @@ class CreateFileResponse(BaseModel):
 class CopyFileRequest(BaseModel):
     file_id: str
     "Existing Google File ID to copy"
-    user_role: Role
-    "Role for future respondents (writer or reader)"
+    default_role: Role
+    "Default role for future respondents (writer or reader)"
 
 
 class CopyFileResponse(BaseModel):
@@ -54,8 +54,8 @@ class CopyFileResponse(BaseModel):
     "Type of file (spreadsheet or document)"
     title: str
     "Title of the file"
-    user_role: Role
-    "Role for users (writer or reader)"
+    default_role: Role
+    "Default role for users (writer or reader)"
     join_link: str
     "Join link for users"
 
@@ -67,6 +67,8 @@ class GoogleFileSSOJoinInfo(BaseModel):
     "Gmail address"
     innomail: str
     "Innopolis email"
+    role: Role
+    "Role assigned to the user (writer or reader)"
     joined_at: datetime
     "Date and time when user joined"
 
@@ -85,8 +87,8 @@ class GoogleFileSSOBanInfo(BaseModel):
 class GoogleFile(BaseModel):
     author_id: PydanticObjectId
     "Author ID"
-    user_role: Role
-    "Role for users (writer or reader)"
+    default_role: Role
+    "Default role for users (writer or reader)"
     slug: str
     "Unique slug for the link"
     file_id: str
@@ -160,3 +162,23 @@ class HealthCheckResponse(BaseModel):
     "Health status"
     service: str
     "Service name"
+
+
+class UpdateUserRoleRequest(BaseModel):
+    role: Role
+    "New role for the user (writer or reader)"
+
+
+class UpdateUserRoleResponse(BaseModel):
+    message: str
+    "Success message"
+
+
+class UpdateDefaultRoleRequest(BaseModel):
+    role: Role
+    "New default role for users (writer or reader)"
+
+
+class UpdateDefaultRoleResponse(BaseModel):
+    message: str
+    "Success message"

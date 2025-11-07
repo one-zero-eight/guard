@@ -210,6 +210,42 @@ def count_user_permissions(file_id: str) -> int:
     return sum(1 for p in perms.get("permissions", []) if p.get("type") == "user")
 
 
+def update_user_permission(file_id: str, permission_id: str, role: str) -> None:
+    """Update a user's permission role in Google Drive."""
+    try:
+        drive = drive_service()
+        drive.permissions().update(
+            fileId=file_id,
+            permissionId=permission_id,
+            body={"role": role},
+        ).execute()
+        logger.info(f"Updated permission {permission_id} to role {role} for file {file_id}")
+    except Exception as e:
+        logger.error(f"Error updating permission {permission_id} for file {file_id}: {e}")
+        raise
+
+
+def update_all_user_permissions(file_id: str, role: str, joins: list) -> int:
+    """Update all user permissions in Google Drive. Returns number of updated permissions."""
+    updated = 0
+    drive = drive_service()
+
+    for join in joins:
+        if join.permission_id:
+            try:
+                drive.permissions().update(
+                    fileId=file_id,
+                    permissionId=join.permission_id,
+                    body={"role": role},
+                ).execute()
+                updated += 1
+                logger.info(f"Updated permission {join.permission_id} to role {role} for file {file_id}")
+            except Exception as e:
+                logger.error(f"Error updating permission {join.permission_id} for file {file_id}: {e}")
+
+    return updated
+
+
 def get_user_id_from_token(user_token_data) -> PydanticObjectId:
     return PydanticObjectId(user_token_data.innohassle_id)
 
@@ -232,7 +268,7 @@ async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str
     if not file:
         raise ValueError(f"File with slug {file_slug} not found")
 
-    role = determine_user_role(file, user_id, file.user_role)
+    role = determine_user_role(file, user_id, file.default_role)
 
     drive = drive_service()
 
@@ -258,6 +294,7 @@ async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str
         user_id=user_id,
         gmail=gmail,
         innomail=innomail,
+        role=role,
         permission_id=permission_id,
     )
 
