@@ -25,6 +25,8 @@ class CreateFileRequest(BaseModel):
     "Title of the file"
     default_role: Role
     "Default role for users (writer or reader)"
+    owner_gmail: str
+    "File owner's Gmail address"
 
 
 class CreateFileResponse(BaseModel):
@@ -45,6 +47,8 @@ class CopyFileRequest(BaseModel):
     "Existing Google File ID to copy"
     default_role: Role
     "Default role for future respondents (writer or reader)"
+    owner_gmail: str
+    "File owner's Gmail address"
 
 
 class CopyFileResponse(BaseModel):
@@ -97,6 +101,10 @@ class GoogleFile(BaseModel):
     "Type of file (spreadsheet or document)"
     title: str
     "File title"
+    owner_gmail: str
+    "File owner's Gmail address"
+    owner_permission_id: str
+    "File owner's permission ID"
     expire_at: datetime | None = None
     "Expiration date"
     sso_joins: list[GoogleFileSSOJoinInfo] | None = None

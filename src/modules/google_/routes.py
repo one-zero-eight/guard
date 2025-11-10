@@ -42,6 +42,7 @@ from src.modules.google_.service import (
     delete_google_file,
     generate_join_link,
     get_user_id_from_token,
+    grant_owner_permission,
     revoke_file_permission,
     service_email,
     sheets_service,
@@ -89,10 +90,14 @@ async def create_file(
         logger.info(
             f"Creating file | user_id={user_token_data.innohassle_id} "
             f"email={user_token_data.email} type={request.file_type} "
-            f"title='{request.title}' role={request.default_role}"
+            f"title='{request.title}' role={request.default_role} "
+            f"owner_gmail={request.owner_gmail}"
         )
 
         file_id = create_google_file(file_type=request.file_type, title=request.title)
+
+        # Grant owner permission
+        owner_permission_id = grant_owner_permission(file_id, request.owner_gmail)
 
         file = await google_file_repository.create_file(
             author_id=get_user_id_from_token(user_token_data),
@@ -100,6 +105,8 @@ async def create_file(
             file_id=file_id,
             file_type=request.file_type,
             title=request.title,
+            owner_gmail=request.owner_gmail,
+            owner_permission_id=owner_permission_id,
         )
 
         join_link = generate_join_link(file.slug)
@@ -142,7 +149,8 @@ async def copy_file(
     try:
         logger.info(
             f"Copying file | user_id={user_token_data.innohassle_id} "
-            f"source_file_id={request.file_id} default_role={request.default_role}"
+            f"source_file_id={request.file_id} default_role={request.default_role} "
+            f"owner_gmail={request.owner_gmail}"
         )
 
         new_file_id, title, mime_type = copy_google_file(request.file_id)
@@ -155,12 +163,17 @@ async def copy_file(
             delete_google_file(new_file_id)
             raise HTTPException(status_code=400, detail=f"Unsupported mimeType: {mime_type}")
 
+        # Grant owner permission
+        owner_permission_id = grant_owner_permission(new_file_id, request.owner_gmail)
+
         file = await google_file_repository.create_file(
             author_id=get_user_id_from_token(user_token_data),
             default_role=request.default_role,
             file_id=new_file_id,
             file_type=file_type,  # type: ignore[arg-type]
             title=f"{title} (Copy)",
+            owner_gmail=request.owner_gmail,
+            owner_permission_id=owner_permission_id,
         )
 
         join_link = generate_join_link(file.slug)
@@ -264,6 +277,8 @@ async def get_files(
                 slug=file.slug,
                 file_id=file.file_id,
                 file_type=file.file_type,
+                owner_gmail=file.owner_gmail,
+                owner_permission_id=file.owner_permission_id,
                 title=file.title,
                 expire_at=file.expire_at,
                 sso_joins_count=len(file.sso_joins or []),
@@ -299,6 +314,8 @@ async def get_file(
             file_id=file.file_id,
             file_type=file.file_type,
             title=file.title,
+            owner_gmail=file.owner_gmail,
+            owner_permission_id=file.owner_permission_id,
             expire_at=file.expire_at,
             sso_joins=[
                 GoogleFileSSOJoinInfo(
@@ -589,8 +606,7 @@ async def update_default_role(
         verify_file_ownership(file, user_token_data.innohassle_id)
 
         logger.info(
-            f"Updating default role | author_id={user_token_data.innohassle_id} "
-            f"slug={slug} new_role={request.role}"
+            f"Updating default role | author_id={user_token_data.innohassle_id} slug={slug} new_role={request.role}"
         )
 
         updated_count = update_all_user_permissions(file.file_id, request.role, file.sso_joins)
@@ -601,8 +617,7 @@ async def update_default_role(
             await google_file_repository.update_user_role(slug=slug, user_id=join.user_id, role=request.role)
 
         logger.info(
-            f"Default role updated successfully | slug={slug} role={request.role} "
-            f"updated_permissions={updated_count}"
+            f"Default role updated successfully | slug={slug} role={request.role} updated_permissions={updated_count}"
         )
 
         return UpdateDefaultRoleResponse(

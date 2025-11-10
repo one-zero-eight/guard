@@ -15,3 +15,8 @@ class InvalidGmailException(GoogleFileException):
     def __init__(self, gmail: str):
         self.gmail = gmail
         super().__init__(f"Gmail {gmail} does not exist or is not associated with a Google account")
+
+
+class UnknownErrorException(GoogleFileException):
+    def __init__(self):
+        super().__init__("Unknown error")

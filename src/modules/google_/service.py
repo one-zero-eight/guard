@@ -254,6 +254,35 @@ def generate_join_link(slug: str) -> str:
     return f"{settings.base_url}/guard/google/files/{slug}/join"
 
 
+def grant_owner_permission(file_id: str, owner_gmail: str) -> str:
+    """Grant write permission to the file owner and return permission_id."""
+    from src.modules.google_.exceptions import InvalidGmailException, UnknownErrorException
+
+    drive = drive_service()
+
+    try:
+        permission = (
+            drive.permissions()
+            .create(
+                fileId=file_id,
+                body={"type": "user", "role": "writer", "emailAddress": owner_gmail},
+                sendNotificationEmail=False,
+            )
+            .execute()
+        )
+    except HttpError as e:
+        if e.resp.status == 400 and ("invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)):
+            raise InvalidGmailException(gmail=owner_gmail)
+        raise UnknownErrorException()
+
+    permission_id = permission.get("id")
+    logger.info(
+        f"Successfully granted owner permission to {owner_gmail} for file {file_id}, permission_id={permission_id}"
+    )
+
+    return permission_id
+
+
 def determine_user_role(file, user_id: PydanticObjectId, requested_role: str) -> str:
     if str(file.author_id) == str(user_id):
         return UserRoles.WRITER
@@ -261,7 +290,7 @@ def determine_user_role(file, user_id: PydanticObjectId, requested_role: str) ->
 
 
 async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str, innomail: str):
-    from src.modules.google_.exceptions import InvalidGmailException
+    from src.modules.google_.exceptions import InvalidGmailException, UnknownErrorException
     from src.modules.google_.repository import google_file_repository
 
     file = await google_file_repository.get_by_slug(file_slug)
@@ -283,9 +312,9 @@ async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str
             .execute()
         )
     except HttpError as e:
-        if e.resp.status == 400 and "invalidSharingRequest" in str(e):
+        if e.resp.status == 400 and ("invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)):
             raise InvalidGmailException(gmail=gmail)
-        raise
+        raise UnknownErrorException()
 
     permission_id = permission.get("id")
 

@@ -28,6 +28,8 @@ class GoogleFileRepository:
         file_id: str,
         file_type: GoogleFileType,
         title: str,
+        owner_gmail: str,
+        owner_permission_id: str,
     ) -> GoogleFile:
         file = GoogleFile(
             author_id=author_id,
@@ -36,6 +38,8 @@ class GoogleFileRepository:
             file_type=file_type,
             slug=generate_slug(),
             title=title,
+            owner_gmail=owner_gmail,
+            owner_permission_id=owner_permission_id,
             sso_joins=[],
             sso_banned=[],
         )

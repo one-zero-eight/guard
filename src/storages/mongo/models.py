@@ -18,7 +18,7 @@ class GoogleFileSSOJoin(BaseModel):
     innomail: str
     role: GoogleFileUserRole
     joined_at: datetime
-    permission_id: str | None = None
+    permission_id: str
 
 
 class GoogleFileSSOBan(BaseModel):
@@ -31,6 +31,8 @@ class GoogleFileSSOBan(BaseModel):
 class GoogleFileSchema(BaseModel):
     author_id: UserID
     default_role: GoogleFileUserRole
+    owner_gmail: str
+    owner_permission_id: str
     slug: str
     file_id: str
     file_type: GoogleFileType
