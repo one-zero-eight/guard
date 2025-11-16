@@ -6,6 +6,8 @@ from googleapiclient.errors import HttpError
 from src.api.dependencies import VerifyTokenDep
 from src.logging_ import logger
 from src.modules.google_.exceptions import (
+    FileNotFoundException,
+    GmailAlreadyUsedException,
     InvalidGmailException,
     UserBannedException,
 )
@@ -400,6 +402,12 @@ async def join_file(
             status_code=400,
             detail=f"Gmail {e.gmail} does not exist or is not associated with a Google account",
         )
+    except FileNotFoundException as e:
+        logger.error(f"File not found: {e}")
+        raise HTTPException(status_code=404, detail=f"File with slug {e.slug} not found")
+    except GmailAlreadyUsedException as e:
+        logger.error(f"Gmail already used: {e}")
+        raise HTTPException(status_code=400, detail=f"Gmail {e.gmail} is already used by another user")
     except Exception as e:
         logger.error(
             f"Error joining file | user_id={user_token_data.innohassle_id} gmail={request.gmail} slug={slug} error={e}"

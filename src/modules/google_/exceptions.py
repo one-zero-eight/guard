@@ -20,3 +20,15 @@ class InvalidGmailException(GoogleFileException):
 class UnknownErrorException(GoogleFileException):
     def __init__(self):
         super().__init__("Unknown error")
+
+
+class FileNotFoundException(GoogleFileException):
+    def __init__(self, slug: str):
+        self.slug = slug
+        super().__init__(f"File with slug {slug} not found")
+
+
+class GmailAlreadyUsedException(GoogleFileException):
+    def __init__(self, gmail: str):
+        self.gmail = gmail
+        super().__init__(f"Gmail {gmail} is already used by another user")

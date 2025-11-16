@@ -87,6 +87,15 @@ class GoogleFileRepository:
         await file.save()
         return file
 
+    async def remove_user_from_file(self, slug: str, user_id: UserID):
+        file = await self.get_by_slug(slug)
+        if not file:
+            return None
+
+        file.sso_joins = [join for join in file.sso_joins if str(join.user_id) != str(user_id)]
+        await file.save()
+        return file
+
     async def ban_user_from_file(self, slug: str, user_id: UserID, gmail: str, innomail: str):
         file = await self.get_by_slug(slug)
         if not file:

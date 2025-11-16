@@ -9,7 +9,7 @@ from googleapiclient.errors import HttpError
 
 from src.config import settings
 from src.logging_ import logger
-from src.modules.google_.constants import FileTypes, HTTPStatuses, UserRoles
+from src.modules.google_.constants import FileTypes, HTTPStatuses
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -283,50 +283,110 @@ def grant_owner_permission(file_id: str, owner_gmail: str) -> str:
     return permission_id
 
 
-def determine_user_role(file, user_id: PydanticObjectId, requested_role: str) -> str:
-    if str(file.author_id) == str(user_id):
-        return UserRoles.WRITER
-    return requested_role
+# def determine_user_role(file, user_id: PydanticObjectId, requested_role: str) -> str:
+#     if str(file.author_id) == str(user_id):
+#         return UserRoles.WRITER
+#     return requested_role
 
 
 async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str, innomail: str):
-    from src.modules.google_.exceptions import InvalidGmailException, UnknownErrorException
+    from src.modules.google_.exceptions import (
+        FileNotFoundException,
+        GmailAlreadyUsedException,
+        InvalidGmailException,
+        UnknownErrorException,
+    )
     from src.modules.google_.repository import google_file_repository
 
     file = await google_file_repository.get_by_slug(file_slug)
     if not file:
-        raise ValueError(f"File with slug {file_slug} not found")
+        raise FileNotFoundException(slug=file_slug)
 
-    role = determine_user_role(file, user_id, file.default_role)
+    role = file.default_role
 
-    drive = drive_service()
-
-    try:
-        permission = (
-            drive.permissions()
-            .create(
-                fileId=file.file_id,
-                body={"type": "user", "role": role, "emailAddress": gmail},
-                sendNotificationEmail=False,
-            )
-            .execute()
+    # if user is the owner of the file, we don't need to add him again
+    # if str(file.author_id) == str(user_id):
+    #     logger.info(f"User {user_id} is the owner of the file {file_slug}, no need to add him again")
+    #     return file
+    # if user already joined the file with the same gmail, we don't need to add him again
+    if any(join.gmail == gmail and str(join.user_id) == str(user_id) for join in file.sso_joins):
+        logger.info(f"User {user_id} already joined the file {file_slug} with the same gmail, no need to add him again")
+        return file
+    # if user already joined the file, but with a different gmail, we need to revoke his permission and add him again with the same role then
+    elif any(join.gmail != gmail and str(join.user_id) == str(user_id) for join in file.sso_joins):
+        logger.info(
+            f"User {user_id} already joined the file {file_slug} with a different gmail, revoking permission and adding again"
         )
-    except HttpError as e:
-        if e.resp.status == 400 and ("invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)):
-            raise InvalidGmailException(gmail=gmail)
-        raise UnknownErrorException()
+        join = next(join for join in file.sso_joins if join.gmail != gmail and str(join.user_id) == str(user_id))
+        drive = drive_service()
 
-    permission_id = permission.get("id")
+        try:
+            permission = (
+                drive.permissions()
+                .create(
+                    fileId=file.file_id,
+                    body={"type": "user", "role": join.role, "emailAddress": gmail},
+                    sendNotificationEmail=False,
+                )
+                .execute()
+            )
+            revoke_file_permission(file.file_id, join.permission_id)
+            await google_file_repository.remove_user_from_file(slug=file_slug, user_id=user_id)
 
-    await google_file_repository.join_user_to_file(
-        slug=file_slug,
-        user_id=user_id,
-        gmail=gmail,
-        innomail=innomail,
-        role=role,
-        permission_id=permission_id,
-    )
+            await google_file_repository.join_user_to_file(
+                slug=file_slug,
+                user_id=user_id,
+                gmail=gmail,
+                innomail=innomail,
+                role=join.role,
+                permission_id=permission.get("id"),
+            )
 
-    logger.info(f"Successfully added {gmail} as {role} to file {file.file_id}")
+            logger.info(f"Successfully added {gmail} as {join.role} to file {file.file_id}")
 
-    return file
+            return file
+        except HttpError as e:
+            if e.resp.status == 400 and ("invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)):
+                raise InvalidGmailException(gmail=gmail)
+            raise UnknownErrorException()
+
+    # if user joined with gmail that some other user uses, we raise an error
+    elif any(join.gmail == gmail and str(join.user_id) != str(user_id) for join in file.sso_joins):
+        logger.info(
+            f"User {user_id} joined the file {file_slug} with gmail {gmail} that some other user uses, raising an error"
+        )
+        raise GmailAlreadyUsedException(gmail=gmail)
+    else:
+        logger.info(f"User {user_id} is not joined the file {file_slug}, adding him with role {role}")
+
+        drive = drive_service()
+
+        try:
+            permission = (
+                drive.permissions()
+                .create(
+                    fileId=file.file_id,
+                    body={"type": "user", "role": role, "emailAddress": gmail},
+                    sendNotificationEmail=False,
+                )
+                .execute()
+            )
+        except HttpError as e:
+            if e.resp.status == 400 and ("invalidSharingRequest" in str(e) or "permission.emailAddress" in str(e)):
+                raise InvalidGmailException(gmail=gmail)
+            raise UnknownErrorException()
+
+        permission_id = permission.get("id")
+
+        await google_file_repository.join_user_to_file(
+            slug=file_slug,
+            user_id=user_id,
+            gmail=gmail,
+            innomail=innomail,
+            role=role,
+            permission_id=permission_id,
+        )
+
+        logger.info(f"Successfully added {gmail} as {role} to file {file.file_id}")
+
+        return file
