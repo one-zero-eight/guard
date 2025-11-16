@@ -305,9 +305,9 @@ async def add_user_to_file(file_slug: str, user_id: PydanticObjectId, gmail: str
     role = file.default_role
 
     # if user is the owner of the file, we don't need to add him again
-    # if str(file.author_id) == str(user_id):
-    #     logger.info(f"User {user_id} is the owner of the file {file_slug}, no need to add him again")
-    #     return file
+    if str(file.author_id) == str(user_id):
+        logger.info(f"User {user_id} is the owner of the file {file_slug}, no need to add him again")
+        return file
     # if user already joined the file with the same gmail, we don't need to add him again
     if any(join.gmail == gmail and str(join.user_id) == str(user_id) for join in file.sso_joins):
         logger.info(f"User {user_id} already joined the file {file_slug} with the same gmail, no need to add him again")
