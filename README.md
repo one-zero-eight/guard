@@ -35,7 +35,7 @@ Guard API is a FastAPI-based service that:
 - [Google Sheets API](https://developers.google.com/sheets/api) - Spreadsheet integration
 - [Google Drive API](https://developers.google.com/drive) - File permissions management
 - InNoHassle Accounts SDK - Authentication
-- Formatting and linting: [Ruff](https://docs.astral.sh/ruff/), [pre-commit](https://pre-commit.com/)
+- Formatting and linting: [Ruff](https://docs.astral.sh/ruff/), [prek](https://prek.j178.dev/)
 - Deployment: [Docker](https://www.docker.com/), [Docker Compose](https://docs.docker.com/compose/),
   [GitHub Actions](https://github.com/features/actions)
 
