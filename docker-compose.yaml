@@ -16,6 +16,13 @@ services:
       - "./settings.yaml:/app/settings.yaml:ro" # Read-only settings file
       - "./client_secret.json:/app/client_secret.json:ro" # Read-only Google OAuth client_secret.json file
       - "./token.json:/app/token.json:ro" # Read-only Google OAuth token.json file
+    deploy:
+      # Change limits if project needs more RAM, though try to stay within limits
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 500m
 
   db:
     # See more: https://hub.docker.com/_/mongo
