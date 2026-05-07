@@ -540,31 +540,31 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "beanie", specifier = ">=1.30.0,<2.0.0" },
-    { name = "colorlog", specifier = ">=6.9.0" },
-    { name = "fastapi", specifier = ">=0.115.12" },
+    { name = "colorlog", specifier = ">=6.10.1" },
+    { name = "fastapi", specifier = ">=0.136.1" },
     { name = "fastapi-derive-responses", specifier = ">=0.1.7" },
-    { name = "fastapi-swagger", specifier = ">=0.2.19" },
-    { name = "google-api-python-client", specifier = ">=2.184.0" },
-    { name = "google-auth", specifier = ">=2.41.1" },
-    { name = "google-auth-oauthlib", specifier = ">=1.2.2" },
-    { name = "gunicorn", specifier = ">=23.0.0" },
+    { name = "fastapi-swagger", specifier = ">=0.4.49" },
+    { name = "google-api-python-client", specifier = ">=2.196.0" },
+    { name = "google-auth", specifier = ">=2.50.0" },
+    { name = "google-auth-oauthlib", specifier = ">=1.3.1" },
+    { name = "gunicorn", specifier = ">=26.0.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "joserfc", specifier = ">=1.6.5" },
     { name = "motor", specifier = ">=3.7.1" },
-    { name = "pydantic", extras = ["email"], specifier = ">=2.12.2" },
-    { name = "python-multipart", specifier = ">=0.0.20" },
-    { name = "pytz", specifier = ">=2025.2" },
-    { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "uvicorn", specifier = ">=0.34.2" },
+    { name = "pydantic", extras = ["email"], specifier = ">=2.13.4" },
+    { name = "python-multipart", specifier = ">=0.0.27" },
+    { name = "pytz", specifier = ">=2026.2" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "uvicorn", specifier = ">=0.46.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "prek", specifier = ">=0.3.8" },
-    { name = "pytest", specifier = ">=8.4.0" },
-    { name = "pytest-asyncio", specifier = ">=1.1.0" },
-    { name = "pytest-cov", specifier = ">=6.2.1" },
-    { name = "ruff", specifier = ">=0.12.2" },
+    { name = "prek", specifier = ">=0.3.13" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "ruff", specifier = ">=0.15.12" },
 ]
 
 [[package]]
